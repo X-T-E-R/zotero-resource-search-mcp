@@ -1,0 +1,50 @@
+{
+  "name": "zotero-resource-search-mcp",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Zotero plugin providing MCP-based academic and web resource search across multiple platforms with direct Zotero integration",
+  "config": {
+    "addonName": "Zotero Resource Search MCP",
+    "addonID": "zotero-resource-search-mcp@xter.org",
+    "addonRef": "zotero-resource-search",
+    "addonInstance": "ZoteroResourceSearch",
+    "prefsPrefix": "extensions.zotero.zotero-resource-search"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/X-T-E-R/zotero-resource-search-mcp.git"
+  },
+  "author": "xter",
+  "homepage": "https://github.com/X-T-E-R/zotero-resource-search-mcp",
+  "license": "MIT",
+  "scripts": {
+    "start": "zotero-plugin serve",
+    "build": "zotero-plugin build && tsc --noEmit",
+    "lint:check": "prettier --check . && eslint .",
+    "lint:fix": "prettier --write . && eslint . --fix",
+    "release": "npm version patch --force -m \"Release v%s\" && git push --follow-tags"
+  },
+  "dependencies": {
+    "zotero-plugin-toolkit": "^5.1.0-beta.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "zotero-plugin-scaffold": "^0.8.0",
+    "zotero-types": "^4.1.0-beta.1"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "tabWidth": 2,
+    "endOfLine": "lf",
+    "overrides": [
+      {
+        "files": ["*.xhtml"],
+        "options": {
+          "htmlWhitespaceSensitivity": "css"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "zotero-types/entries/sandbox/",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": ["src", "typings"],
+  "exclude": ["build", "addon"]
+}

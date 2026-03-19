@@ -1,0 +1,9 @@
+node_modules/
+.scaffold/
+dist/
+*.xpi
+*.log
+*.tsbuildinfo
+.env
+.DS_Store
+Thumbs.db
