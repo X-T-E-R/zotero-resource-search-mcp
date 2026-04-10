@@ -166,6 +166,10 @@ skill/SKILL.md        # Agent-oriented tool reference
 
 [MIT License](./LICENSE)
 
+## Author
+
+**xter** — [GitHub](https://github.com/X-T-E-R) · [xter.org](https://xter.org)
+
 ## Acknowledgments
 
 - Web routing patterns adapted from [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) (skernelx)

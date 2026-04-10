@@ -166,6 +166,10 @@ skill/SKILL.md        # 面向 Agent 的工具说明
 
 [MIT License](./LICENSE)
 
+## 作者
+
+**xter** — [GitHub](https://github.com/X-T-E-R) · [xter.org](https://xter.org)
+
 ## 致谢
 
 - 网页路由思路参考 [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy)（skernelx）
