@@ -1,11 +1,1 @@
-import "./academic/ArxivSearchProvider";
-import "./academic/CrossrefSearchProvider";
-import "./academic/PubMedSearchProvider";
-import "./academic/WoSSearchProvider";
-import "./academic/ZJUSummonSearchProvider";
-import "./academic/CQVIPSearchProvider";
-import "./academic/SemanticScholarSearchProvider";
-import "./academic/ScopusSearchProvider";
-import "./academic/BioRxivSearchProvider";
-import "./web/WebSearchProvider";
-import "./resolvers/CrossrefResolver";
+export { loadAllProviders as initProviders } from "./loader";

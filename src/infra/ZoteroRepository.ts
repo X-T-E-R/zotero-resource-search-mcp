@@ -25,9 +25,7 @@ export class ZoteroRepository<T extends Record<string, any>> {
         return col;
       })
       .join(", ");
-    await this.db.queryAsync(
-      `CREATE TABLE IF NOT EXISTS ${this.tableName} (${columns})`,
-    );
+    await this.db.queryAsync(`CREATE TABLE IF NOT EXISTS ${this.tableName} (${columns})`);
     logger.info(`Repository initialized: ${this.tableName}`);
   }
 
@@ -66,17 +64,11 @@ export class ZoteroRepository<T extends Record<string, any>> {
 
   async deleteWhere(where: Partial<T>): Promise<void> {
     const { clause, values } = this.buildWhere(where);
-    await this.db.queryAsync(
-      `DELETE FROM ${this.tableName} WHERE ${clause}`,
-      values,
-    );
+    await this.db.queryAsync(`DELETE FROM ${this.tableName} WHERE ${clause}`, values);
   }
 
   async deleteByCondition(condition: string, values: any[]): Promise<void> {
-    await this.db.queryAsync(
-      `DELETE FROM ${this.tableName} WHERE ${condition}`,
-      values,
-    );
+    await this.db.queryAsync(`DELETE FROM ${this.tableName} WHERE ${condition}`, values);
   }
 
   async getValue(column: string, where: Partial<T>): Promise<any> {

@@ -66,7 +66,9 @@ export class CollectionHelper {
           ((c as any).parentID ?? null) === currentParentID,
       );
       if (!match) {
-        logger.warn(`Collection path segment not found: "${part}" under parentID=${currentParentID}`);
+        logger.warn(
+          `Collection path segment not found: "${part}" under parentID=${currentParentID}`,
+        );
         return null;
       }
       currentParentID = (match as any).id;
@@ -84,7 +86,9 @@ export class CollectionHelper {
       try {
         const col = Zotero.Collections.getByLibraryAndKey(libraryID, keyOrPath);
         if (col) return keyOrPath;
-      } catch { /* not a key */ }
+      } catch {
+        /* not a key */
+      }
     }
     return this.resolveByPath(keyOrPath);
   }

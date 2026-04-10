@@ -7,6 +7,7 @@
 declare namespace _ZoteroTypes {
   interface Prefs {
     PluginPrefsMap: {
+      "providers.registryUrl": string;
       "mcp.server.enabled": boolean;
       "mcp.server.port": number;
       "general.fetchPDF": boolean;

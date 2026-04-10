@@ -124,7 +124,8 @@ export class StreamableMCPServer {
   }
 
   private async processRequest(request: MCPRequest): Promise<MCPResponse | null> {
-    const isNotification = !Object.prototype.hasOwnProperty.call(request, "id") ||
+    const isNotification =
+      !Object.prototype.hasOwnProperty.call(request, "id") ||
       request.id === null ||
       request.id === undefined;
 
@@ -244,12 +245,7 @@ export class StreamableMCPServer {
         "prompts/list",
         "ping",
       ],
-      availableTools: [
-        "resource_search",
-        "resource_lookup",
-        "resource_add",
-        "platform_status",
-      ],
+      availableTools: ["resource_search", "resource_lookup", "resource_add", "platform_status"],
       transport: {
         type: "streamable-http",
         keepAliveSupported: false,

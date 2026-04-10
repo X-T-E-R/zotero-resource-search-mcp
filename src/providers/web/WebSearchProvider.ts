@@ -51,4 +51,6 @@ export class WebSearchProvider implements SearchProvider {
   }
 }
 
-providerRegistry.registerSearchProvider(new WebSearchProvider());
+export function registerWebSearchProvider(): void {
+  providerRegistry.registerSearchProvider(new WebSearchProvider());
+}

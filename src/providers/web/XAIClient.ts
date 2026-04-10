@@ -70,7 +70,12 @@ export class XAIClient {
 
     const payload = {
       model,
-      input: [{ role: "user", content: `${opts.query}\n\nReturn up to ${opts.maxResults} relevant results with concise sourcing.` }],
+      input: [
+        {
+          role: "user",
+          content: `${opts.query}\n\nReturn up to ${opts.maxResults} relevant results with concise sourcing.`,
+        },
+      ],
       tools,
       store: false,
     };
@@ -133,7 +138,8 @@ export class XAIClient {
   }
 
   private normalizeSocialResponse(response: any, query: string): WebSearchResponse {
-    const rawResults = response?.results ?? response?.items ?? response?.posts ?? response?.data ?? [];
+    const rawResults =
+      response?.results ?? response?.items ?? response?.posts ?? response?.data ?? [];
     const results = (Array.isArray(rawResults) ? rawResults : [])
       .filter((item: any) => typeof item === "object" && item !== null)
       .map((item: any) => ({
@@ -147,7 +153,9 @@ export class XAIClient {
         created_at: item.created_at ?? item.published_at ?? "",
       }));
 
-    const citations = results.filter((r: any) => r.url).map((r: any) => ({ title: r.title, url: r.url }));
+    const citations = results
+      .filter((r: any) => r.url)
+      .map((r: any) => ({ title: r.title, url: r.url }));
     const answer = response?.answer ?? response?.summary ?? response?.content ?? "";
 
     return {

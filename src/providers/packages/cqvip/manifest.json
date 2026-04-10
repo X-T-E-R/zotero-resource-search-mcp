@@ -1,0 +1,15 @@
+{
+  "id": "cqvip",
+  "name": "CQVIP 维普",
+  "version": "1.0.0",
+  "sourceType": "academic",
+  "description": "CQVIP journal search",
+  "minPluginVersion": "0.1.0",
+  "permissions": {
+    "urls": ["https://qikan.cqvip.com/*"]
+  },
+  "configSchema": {
+    "enabled": { "type": "boolean", "default": true }
+  },
+  "rateLimitPerMinute": 120
+}

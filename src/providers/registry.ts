@@ -5,9 +5,17 @@ class ProviderRegistry {
   private searchProviders = new Map<string, SearchProvider>();
   private resolvers = new Map<string, MetadataResolver>();
 
+  /** Clear all search providers (used before reloading pluggable sources). */
+  clearSearchProviders(): void {
+    this.searchProviders.clear();
+    logger.info("Search providers cleared");
+  }
+
   registerSearchProvider(provider: SearchProvider): void {
     this.searchProviders.set(provider.id, provider);
-    logger.info(`Search provider registered: ${provider.id} (${provider.name}) [${provider.sourceType}]`);
+    logger.info(
+      `Search provider registered: ${provider.id} (${provider.name}) [${provider.sourceType}]`,
+    );
   }
 
   registerResolver(resolver: MetadataResolver): void {
@@ -50,9 +58,7 @@ class ProviderRegistry {
   }
 
   getIdsByType(type: SourceType): string[] {
-    return [...this.searchProviders.values()]
-      .filter((p) => p.sourceType === type)
-      .map((p) => p.id);
+    return [...this.searchProviders.values()].filter((p) => p.sourceType === type).map((p) => p.id);
   }
 
   getAvailableIds(): string[] {

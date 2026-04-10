@@ -16,11 +16,7 @@ export class HttpClient {
   private defaultHeaders: Record<string, string>;
   private timeout: number;
 
-  constructor(options?: {
-    baseURL?: string;
-    timeout?: number;
-    headers?: Record<string, string>;
-  }) {
+  constructor(options?: { baseURL?: string; timeout?: number; headers?: Record<string, string> }) {
     this.baseURL = (options?.baseURL ?? "").replace(/\/+$/, "");
     this.timeout = options?.timeout ?? 30_000;
     this.defaultHeaders = {
@@ -29,10 +25,7 @@ export class HttpClient {
     };
   }
 
-  async get<T = any>(
-    url: string,
-    options?: HttpRequestOptions,
-  ): Promise<HttpResponse<T>> {
+  async get<T = any>(url: string, options?: HttpRequestOptions): Promise<HttpResponse<T>> {
     const fullURL = this.buildURL(url, options?.params);
     return this.request<T>(fullURL, {
       method: "GET",
@@ -74,9 +67,7 @@ export class HttpClient {
     if (/^https?:\/\//i.test(path)) {
       url = path;
     } else {
-      url = this.baseURL
-        ? `${this.baseURL}/${path.replace(/^\/+/, "")}`
-        : path;
+      url = this.baseURL ? `${this.baseURL}/${path.replace(/^\/+/, "")}` : path;
     }
 
     if (params) {
@@ -94,14 +85,10 @@ export class HttpClient {
       if (value === undefined || value === null) continue;
       if (Array.isArray(value)) {
         for (const v of value) {
-          parts.push(
-            `${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`,
-          );
+          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`);
         }
       } else {
-        parts.push(
-          `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
-        );
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
       }
     }
     return parts.join("&");
@@ -119,9 +106,12 @@ export class HttpClient {
     };
 
     let timer: any;
-    const AC = typeof AbortController !== "undefined"
-      ? AbortController
-      : (typeof globalThis !== "undefined" ? (globalThis as any).AbortController : undefined);
+    const AC =
+      typeof AbortController !== "undefined"
+        ? AbortController
+        : typeof globalThis !== "undefined"
+          ? (globalThis as any).AbortController
+          : undefined;
 
     if (AC) {
       const controller = new AC();
@@ -130,9 +120,12 @@ export class HttpClient {
     }
 
     try {
-      const fetchFn = typeof fetch !== "undefined"
-        ? fetch
-        : (typeof globalThis !== "undefined" ? (globalThis as any).fetch : undefined);
+      const fetchFn =
+        typeof fetch !== "undefined"
+          ? fetch
+          : typeof globalThis !== "undefined"
+            ? (globalThis as any).fetch
+            : undefined;
 
       if (!fetchFn) {
         return this.requestViaXHR<T>(url, init, timeoutMs);
@@ -183,7 +176,11 @@ export class HttpClient {
       xhr.timeout = timeoutMs;
 
       for (const [key, value] of Object.entries(init.headers)) {
-        try { xhr.setRequestHeader(key, value); } catch { /* skip invalid */ }
+        try {
+          xhr.setRequestHeader(key, value);
+        } catch {
+          /* skip invalid */
+        }
       }
 
       xhr.onload = () => {
@@ -191,9 +188,7 @@ export class HttpClient {
         const text = xhr.responseText ?? "";
         let data: any;
         try {
-          data = contentType.includes("application/json")
-            ? JSON.parse(text)
-            : text;
+          data = contentType.includes("application/json") ? JSON.parse(text) : text;
         } catch {
           data = text;
         }

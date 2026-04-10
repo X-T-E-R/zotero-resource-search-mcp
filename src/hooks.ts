@@ -4,14 +4,10 @@ import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./utils/prefs";
 import { createZToolkit } from "./utils/ztoolkit";
 import { config } from "../package.json";
-import "./providers/init";
+import { initProviders } from "./providers/init";
 
 async function onStartup() {
-  await Promise.all([
-    Zotero.initializationPromise,
-    Zotero.unlockPromise,
-    Zotero.uiReadyPromise,
-  ]);
+  await Promise.all([Zotero.initializationPromise, Zotero.unlockPromise, Zotero.uiReadyPromise]);
 
   try {
     const Cu = Components.utils as any;
@@ -50,6 +46,12 @@ async function onStartup() {
   serverPreferences.init();
 
   try {
+    await initProviders();
+  } catch (e) {
+    Zotero.debug(`[ResourceSearch] initProviders failed: ${e}`);
+  }
+
+  try {
     const port = serverPreferences.getPort();
     const enabled = serverPreferences.isServerEnabled();
 
@@ -68,10 +70,7 @@ async function onStartup() {
 
   serverPreferences.addObserver(async (name) => {
     const prefix = config.prefsPrefix;
-    if (
-      name === `${prefix}.mcp.server.port` ||
-      name === `${prefix}.mcp.server.enabled`
-    ) {
+    if (name === `${prefix}.mcp.server.port` || name === `${prefix}.mcp.server.enabled`) {
       try {
         if (httpServer.isServerRunning()) {
           httpServer.stop();

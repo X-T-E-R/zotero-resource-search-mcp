@@ -16,20 +16,23 @@ export class SearchAction {
   }
 
   private mergeOptions(providerId: string, options?: SearchOptions): SearchOptions {
-    const globalSort = configProvider.getString("general.defaultSort", "relevance") as SearchOptions["sortBy"];
+    const globalSort = configProvider.getString(
+      "general.defaultSort",
+      "relevance",
+    ) as SearchOptions["sortBy"];
     const globalMax = configProvider.getNumber("general.maxResults", 25);
 
     const providerSort = configProvider.getString(`platform.${providerId}.defaultSort`, "");
     const providerMax = configProvider.getNumber(`platform.${providerId}.maxResults`, 0);
 
-    const effectiveSort = (options?.sortBy)
-      || (providerSort || undefined)
-      || globalSort
-      || "relevance";
+    const effectiveSort = options?.sortBy || providerSort || undefined || globalSort || "relevance";
 
-    const effectiveMax = (options?.maxResults && options.maxResults > 0)
-      ? options.maxResults
-      : (providerMax > 0 ? providerMax : globalMax);
+    const effectiveMax =
+      options?.maxResults && options.maxResults > 0
+        ? options.maxResults
+        : providerMax > 0
+          ? providerMax
+          : globalMax;
 
     return {
       ...options,
@@ -39,7 +42,11 @@ export class SearchAction {
     };
   }
 
-  private async searchByType(query: string, sourceType: "academic" | "web" | "patent", options?: SearchOptions): Promise<SearchResult[]> {
+  private async searchByType(
+    query: string,
+    sourceType: "academic" | "web" | "patent",
+    options?: SearchOptions,
+  ): Promise<SearchResult[]> {
     const providers = providerRegistry.getByType(sourceType);
     if (providers.length === 0) {
       return [

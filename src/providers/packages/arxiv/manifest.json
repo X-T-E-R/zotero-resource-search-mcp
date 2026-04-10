@@ -1,0 +1,16 @@
+{
+  "id": "arxiv",
+  "name": "arXiv",
+  "version": "1.0.0",
+  "sourceType": "academic",
+  "description": "arXiv preprint search",
+  "minPluginVersion": "0.1.0",
+  "permissions": {
+    "urls": ["http://export.arxiv.org/*", "https://export.arxiv.org/*"]
+  },
+  "configSchema": {
+    "enabled": { "type": "boolean", "default": true },
+    "sortOrder": { "type": "string", "default": "descending", "enum": ["ascending", "descending"] }
+  },
+  "rateLimitPerMinute": 120
+}

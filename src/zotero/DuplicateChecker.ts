@@ -42,14 +42,16 @@ export class DuplicateChecker {
   private buildResult(itemID: number): DuplicateResult {
     const item = Zotero.Items.get(itemID);
     const collections = item.getCollections?.() ?? [];
-    const collectionKeys = collections.map((colId: number) => {
-      try {
-        const col = Zotero.Collections.get(colId);
-        return col?.key ?? null;
-      } catch {
-        return null;
-      }
-    }).filter(Boolean) as string[];
+    const collectionKeys = collections
+      .map((colId: number) => {
+        try {
+          const col = Zotero.Collections.get(colId);
+          return col?.key ?? null;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as string[];
 
     return {
       isDuplicate: true,

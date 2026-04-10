@@ -1,0 +1,17 @@
+{
+  "id": "wos",
+  "name": "Web of Science",
+  "version": "1.0.0",
+  "sourceType": "academic",
+  "description": "Clarivate WoS Starter API",
+  "minPluginVersion": "0.1.0",
+  "permissions": {
+    "urls": ["https://api.clarivate.com/*"]
+  },
+  "allowedGlobalPrefs": ["api.wos.key"],
+  "configSchema": {
+    "enabled": { "type": "boolean", "default": true },
+    "database": { "type": "string", "default": "WOS" }
+  },
+  "rateLimitPerMinute": 300
+}

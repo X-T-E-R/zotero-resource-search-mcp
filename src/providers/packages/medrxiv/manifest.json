@@ -1,0 +1,15 @@
+{
+  "id": "medrxiv",
+  "name": "medRxiv",
+  "version": "1.0.0",
+  "sourceType": "academic",
+  "description": "medRxiv API",
+  "minPluginVersion": "0.1.0",
+  "permissions": {
+    "urls": ["https://api.biorxiv.org/*", "https://www.medrxiv.org/*"]
+  },
+  "configSchema": {
+    "enabled": { "type": "boolean", "default": true }
+  },
+  "rateLimitPerMinute": 60
+}

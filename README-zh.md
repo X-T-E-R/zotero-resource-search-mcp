@@ -1,6 +1,6 @@
 <p align="center">
   <b>Zotero Resource Search MCP</b><br/>
-  通过 MCP 实现学术与网页检索、元数据解析与 Zotero 一体化写入。
+  面向 Zotero 的检索执行器 — MCP 工具、内置源、可自写扩展包。
 </p>
 
 <p align="center">
@@ -16,31 +16,37 @@
 
 ---
 
-**Zotero 7+** 插件（清单中 `strict_min_version` 为 6.999，即自 Zotero 7.0 起；`strict_max_version` 为开放上限），在 Zotero 内嵌 **Streamable HTTP MCP** 服务，让 AI 助手通过 **8 个统一工具** 完成学术与网页检索、标识符解析、条目写入、合集浏览与 PDF 获取等操作。
+## 这是什么？
 
-> **关于 ZJU Summon：** 该可选检索源主要面向 **校园网 / 机构 IP** 访问场景，并非面向公众的通用 API——仅在具备访问权限的网络环境下再启用。
+一款 **Zotero 7+** 插件，在 Zotero 内嵌 **Streamable HTTP MCP** 服务。AI 客户端通过 **8 个工具** 完成文献与网页检索、标识符解析、网页抽取与文库写入 —— **不是**绑死一组封闭数据库名单。
+
+| 层次 | 说明 |
+|------|------|
+| **执行器** | MCP 服务、工具分发、与 Zotero 集成（合集、PDF、重复策略）。 |
+| **默认学术源** | 以可插拔包（`manifest.json` + `provider.js`）随包分发：arXiv、Crossref、PubMed、WoS、Semantic Scholar、Scopus、CQVIP、bioRxiv、medRxiv 等。 |
+| **可选 ZJU Summon** | 需 **校园网 / 机构 IP**，非公开 API；仅在可访问网络下启用。 |
+| **网页检索** | 对 Tavily / Firecrawl / Exa / xAI 或可选 [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) 做路由。 |
+| **自有源** | **导入 zip**、在配置目录放置包、或在设置里填写 **远程 registry** URL。 |
+
+设计说明见 [docs/DESIGN.md](./docs/DESIGN.md)；自定义源开发见 [docs/development/provider-sdk.md](./docs/development/provider-sdk.md)。
 
 ---
 
 ## 快速上手
 
-### 1. 安装插件
+### 1. 安装
 
-1. 在 [Releases](https://github.com/X-T-E-R/zotero-resource-search-mcp/releases) 下载最新 `.xpi`
+1. 从 [Releases](https://github.com/X-T-E-R/zotero-resource-search-mcp/releases) 下载 `.xpi`。
 2. Zotero → `工具` → `附加组件` → 齿轮 → `从文件安装附加组件…`
-3. 重启 Zotero
+3. 重启 Zotero。
 
-安装后，可通过 Zotero 附加组件的 **检查更新** 获取新版本（构建产物中的 `update_url` 指向 GitHub 上的 `update.json`）。
+更新：`update_url` 指向 GitHub 的 `update.json`，可在附加组件中 **检查更新**。
 
-### 2. 启用 MCP 服务
+### 2. 启用 MCP
 
-Zotero → `编辑` → `设置` → **Resource Search MCP**：
-
-- 启用 MCP 服务（默认端口 **`23121`**）
+Zotero → `编辑` → `设置` → **Resource Search MCP** → 启用 **MCP 服务器**（默认端口 **23121**）。
 
 ### 3. 连接 AI 客户端
-
-#### MCP 配置示例
 
 ```json
 {
@@ -53,41 +59,24 @@ Zotero → `编辑` → `设置` → **Resource Search MCP**：
 }
 ```
 
-**各客户端配置位置**
-
 | 客户端 | 配置位置 |
 |--------|----------|
-| **Cursor IDE** | `.cursor/mcp.json`（项目）或 `~/.cursor/mcp.json`（全局） |
+| **Cursor** | `.cursor/mcp.json` 或 `~/.cursor/mcp.json` |
 | **Claude Desktop** | `claude_desktop_config.json`（[说明](https://modelcontextprotocol.io/quickstart/user)） |
 | **Claude Code** | `claude mcp add --transport http zotero-resource-search http://127.0.0.1:23121/mcp` |
-| **Cherry Studio** | 设置 → MCP Servers → 从 JSON 导入 |
+| **Cherry Studio** | 设置 → MCP → 导入 JSON |
 | **Gemini CLI** | `~/.gemini/settings.json` |
-| **Chatbox** | 设置 → MCP 服务器配置 |
+| **Chatbox** | MCP 服务器配置 |
 | **Trae AI** | Ctrl+U → AI Management → MCP |
-| **Cline (VS Code)** | MCP Servers → Advanced Settings |
+| **Cline** | MCP Servers → Advanced |
 | **Continue.dev** | `~/.continue/config.json` |
 | **Codex CLI** | `codex mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http` |
 | **Qwen Code** | `qwen mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http` |
 
-#### Agent Skill（推荐）
+### 4. Agent Skill（推荐）
 
-将 [`skill/SKILL.md`](./skill/SKILL.md) 复制到 IDE 的 skill 目录，例如：
-
-```bash
-mkdir -p ~/.cursor/skills/zotero-resource-search-mcp
-cp skill/SKILL.md ~/.cursor/skills/zotero-resource-search-mcp/
-```
-
----
-
-## 功能特性
-
-- **学术检索** — arXiv、Crossref、PubMed、Web of Science、Semantic Scholar、Scopus、CQVIP、bioRxiv、medRxiv；可选 **ZJU Summon**（需机构 IP，见上文说明）
-- **网页检索** — Tavily、Firecrawl、Exa、xAI，或 [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) 统一网关（路由逻辑参考上游）
-- **网页研究** — 检索 + 抓取 + 可选社交/X 类路径（视配置而定）
-- **资源解析** — DOI / PMID / arXiv / ISBN，或 URL 正文抽取
-- **Zotero 集成** — `resource_add` 支持合集路径、重复策略、可选 PDF 拉取
-- **平台状态** — 一次调用查看学术与网页侧可用性
+- **在 Zotero 内：** 设置 → **Agent Skills** → 选择目标 → **导出** 或 **安装到 IDE**（自动写入当前端口）。
+- **从仓库：** 复制 [`docs/skills/SKILL.md`](./docs/skills/SKILL.md) 到例如 `~/.cursor/skills/zotero-resource-search-mcp/SKILL.md`。
 
 ---
 
@@ -95,57 +84,66 @@ cp skill/SKILL.md ~/.cursor/skills/zotero-resource-search-mcp/
 
 | 工具 | 用途 |
 |------|------|
-| `academic_search` | 学术联邦检索 |
-| `web_search` | 统一网页检索（路由器） |
-| `web_research` | 多步网页研究 |
-| `resource_lookup` | 标识符解析或 URL 抽取 |
-| `resource_add` | 写入条目或网页到文库 |
-| `collection_list` | 列出合集（树形或扁平） |
-| `resource_pdf` | 为已有条目获取 PDF |
-| `platform_status` | 按来源类型查看状态 |
+| `academic_search` | 检索已注册的学术源 |
+| `web_search` | 统一网页检索 |
+| `web_research` | 多步研究（检索 + 抓取 + 可选社交） |
+| `resource_lookup` | DOI/PMID/arXiv/ISBN 或 URL 抽取 |
+| `resource_add` | 写入条目或网页 |
+| `collection_list` | 列出合集 |
+| `resource_pdf` | 为条目获取 PDF |
+| `platform_status` | 学术与网页侧可用性 |
 
-完整参数与示例见 [`skill/SKILL.md`](./skill/SKILL.md)
+完整参数：[`docs/skills/SKILL.md`](./docs/skills/SKILL.md)。
 
 ---
 
-## 插件设置（摘要）
+## 设置项概览
 
-- **常规** — 默认排序、最大条数、默认是否 `fetchPDF`
-- **学术** — 启用平台、API 密钥、各平台高级参数
-- **网页** — MySearch Proxy 与/或各服务商密钥
+- **通用** — 默认排序、条数、默认 `fetchPDF`
+- **学术** — 启用平台、API 密钥、各平台高级项
+- **网页** — MySearch Proxy 与/或各服务商 Key
+- **可插拔搜索源** — 列表、导入 zip、重载、registry URL
+- **Agent Skills** — 导出/安装 Cursor、Claude Code、Codex 用 `SKILL.md`
 - **基础设施** — MCP 端口、日志级别
 
+用户扩展目录：`<Zotero 配置目录>/zotero-resource-search/providers/<id>/`。
+
 ---
 
-## 从源码构建
+## 源码构建
 
-**环境：** Node.js 18+、npm、Git；运行 `.xpi` 需要 **Zotero** 7+。
+需要 **Node.js 18+**、**npm**、**Git**，以及 **Zotero 7+** 用于运行 XPI。
 
 ```bash
 git clone https://github.com/X-T-E-R/zotero-resource-search-mcp.git
 cd zotero-resource-search-mcp
 npm install
 npm run build    # 产物：.scaffold/build/zotero-resource-search-mcp.xpi
-npm start        # 开发：与本地 Zotero 热重载
+npm start        # 开发热重载
 ```
 
-维护发布：在提升 `package.json` 版本并打 tag 后，可由 CI 构建并上传附件。本地也可执行 `npm run prepare-release` 重新生成仓库根目录的 `update.json` / `update-beta.json`（用于附加组件更新清单）。
+发布流程：提升 `package.json` 版本、`npm run prepare-release`、打 tag `vX.Y.Z` 并推送，见 [docs/development/versioning.md](./docs/development/versioning.md)。
 
 ---
 
-## 项目结构
+## 仓库结构
 
 ```
+docs/
+  DESIGN.md
+  skills/SKILL.md
+  development/
+    versioning.md
+    provider-sdk.md
 src/
-├── actions/          # 检索、添加、解析
-├── mcp/              # MCP 工具与 JSON-RPC
-├── providers/
-│   ├── academic/     # 学术检索提供方
-│   ├── web/          # 网页客户端与路由
-│   └── resolvers/    # 如 Crossref
-├── zotero/           # 合集、PDF、重复检测
-addon/                # 清单、偏好、设置界面、语言包
-skill/SKILL.md        # 面向 Agent 的工具说明
+  actions/
+  mcp/
+  providers/
+    packages/        # 内置学术源源码（构建进 addon/providers）
+    loader.ts        # 加载内置 + 用户包
+    web/
+  zotero/
+addon/
 ```
 
 ---
@@ -154,11 +152,11 @@ skill/SKILL.md        # 面向 Agent 的工具说明
 
 | 现象 | 建议 |
 |------|------|
-| MCP 无法连接 | 确认 Zotero 已运行、服务已启用、端口与设置一致 |
-| 客户端无工具 | 修改 MCP 配置后重启 AI 客户端 |
-| 某学术源不可用 | 检查 API Key，并用 `platform_status` 查看 |
-| 网页检索无结果 | 至少配置一个网页提供方或 MySearch Proxy |
-| ZJU Summon 无结果 | 需在具备权限的机构网络 / IP 下使用 |
+| MCP 连不上 | 确认 Zotero 已运行、服务已启用、端口一致 |
+| 客户端无工具 | 修改 MCP 配置后重启客户端 |
+| 某学术源不可用 | 使用 `platform_status`；检查启用与 API Key |
+| 网页检索无结果 | 至少配置一个网页 Key 或 MySearch Proxy |
+| 自定义源失败 | 查看调试日志；检查 manifest 与 `permissions.urls` |
 
 ---
 
@@ -173,4 +171,4 @@ skill/SKILL.md        # 面向 Agent 的工具说明
 ## 致谢
 
 - 网页路由思路参考 [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy)（skernelx）
-- 构建基于 [zotero-plugin-toolkit](https://github.com/windingwind/zotero-plugin-toolkit) 与 [zotero-plugin-scaffold](https://github.com/northword/zotero-plugin-scaffold)
+- [zotero-plugin-toolkit](https://github.com/windingwind/zotero-plugin-toolkit)、[zotero-plugin-scaffold](https://github.com/northword/zotero-plugin-scaffold)

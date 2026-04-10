@@ -1,0 +1,14 @@
+{
+  "providers": [
+    "arxiv",
+    "biorxiv",
+    "cqvip",
+    "crossref",
+    "medrxiv",
+    "pubmed",
+    "scopus",
+    "semantic",
+    "wos",
+    "zjusummon"
+  ]
+}

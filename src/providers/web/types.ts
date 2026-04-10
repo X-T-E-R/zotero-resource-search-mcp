@@ -1,9 +1,22 @@
 export type SearchMode =
-  | "auto" | "web" | "news" | "social" | "docs" | "research" | "github" | "pdf";
+  | "auto"
+  | "web"
+  | "news"
+  | "social"
+  | "docs"
+  | "research"
+  | "github"
+  | "pdf";
 
 export type SearchIntent =
-  | "auto" | "factual" | "status" | "comparison" | "tutorial"
-  | "exploratory" | "news" | "resource";
+  | "auto"
+  | "factual"
+  | "status"
+  | "comparison"
+  | "tutorial"
+  | "exploratory"
+  | "news"
+  | "resource";
 
 export type ResolvedSearchIntent = Exclude<SearchIntent, "auto">;
 

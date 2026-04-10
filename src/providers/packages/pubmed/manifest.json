@@ -1,0 +1,16 @@
+{
+  "id": "pubmed",
+  "name": "PubMed",
+  "version": "1.0.0",
+  "sourceType": "academic",
+  "description": "PubMed / NCBI E-utilities",
+  "minPluginVersion": "0.1.0",
+  "permissions": {
+    "urls": ["https://eutils.ncbi.nlm.nih.gov/*"]
+  },
+  "allowedGlobalPrefs": ["api.pubmed.key"],
+  "configSchema": {
+    "enabled": { "type": "boolean", "default": true }
+  },
+  "rateLimitPerMinute": 180
+}

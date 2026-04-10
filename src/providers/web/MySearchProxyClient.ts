@@ -181,9 +181,7 @@ export class MySearchProxyClient {
 
   private extractMcpResult(rpcResponse: any): any {
     if (rpcResponse?.result?.content) {
-      const textContent = rpcResponse.result.content.find(
-        (c: any) => c.type === "text",
-      );
+      const textContent = rpcResponse.result.content.find((c: any) => c.type === "text");
       if (textContent?.text) {
         try {
           return JSON.parse(textContent.text);

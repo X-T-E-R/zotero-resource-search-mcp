@@ -31,9 +31,9 @@ function writeStringToStream(output: any, str: string): void {
 }
 
 async function readFullRequest(input: any): Promise<string> {
-  const converterStream = Cc[
-    "@mozilla.org/intl/converter-input-stream;1"
-  ].createInstance(Ci.nsIConverterInputStream);
+  const converterStream = Cc["@mozilla.org/intl/converter-input-stream;1"].createInstance(
+    Ci.nsIConverterInputStream,
+  );
   converterStream.init(input, "UTF-8", 0, 0);
 
   let requestText = "";

@@ -3,10 +3,7 @@ import { translatorBridge } from "../zotero/TranslatorBridge";
 import { logger } from "../infra/Logger";
 
 export class LookupAction {
-  async execute(
-    identifier: string,
-    identifierType?: string,
-  ): Promise<ResourceItem | null> {
+  async execute(identifier: string, identifierType?: string): Promise<ResourceItem | null> {
     const type = identifierType || this.detectIdentifierType(identifier);
     logger.info(`Lookup: ${type} = ${identifier}`);
 

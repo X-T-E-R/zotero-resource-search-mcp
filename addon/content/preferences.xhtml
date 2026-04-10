@@ -2,80 +2,321 @@
   <html:link rel="localization" href="__addonRef__-preferences.ftl" />
 </linkset>
 
-<prefpane id="__addonRef__-preferences" onload="try { Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window }); } catch(e) { Zotero.debug('[ResourceSearch] prefs onload error: ' + e); }">
+<prefpane
+  id="__addonRef__-preferences"
+  onload="
+    try {
+      Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window });
+    } catch (e) {
+      Zotero.debug('[ResourceSearch] prefs onload error: ' + e);
+    }
+  "
+>
   <preferences>
-    <preference id="extensions.zotero.__addonRef__.mcp.server.enabled" name="extensions.zotero.__addonRef__.mcp.server.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.mcp.server.port" name="extensions.zotero.__addonRef__.mcp.server.port" type="int" />
-    <preference id="extensions.zotero.__addonRef__.general.fetchPDF" name="extensions.zotero.__addonRef__.general.fetchPDF" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.general.defaultSort" name="extensions.zotero.__addonRef__.general.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.general.maxResults" name="extensions.zotero.__addonRef__.general.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.general.logLevel" name="extensions.zotero.__addonRef__.general.logLevel" type="string" />
-    <preference id="extensions.zotero.__addonRef__.api.crossref.mailto" name="extensions.zotero.__addonRef__.api.crossref.mailto" type="string" />
-    <preference id="extensions.zotero.__addonRef__.api.pubmed.key" name="extensions.zotero.__addonRef__.api.pubmed.key" type="string" />
-    <preference id="extensions.zotero.__addonRef__.api.wos.key" name="extensions.zotero.__addonRef__.api.wos.key" type="string" />
-    <preference id="extensions.zotero.__addonRef__.api.semanticScholar.key" name="extensions.zotero.__addonRef__.api.semanticScholar.key" type="string" />
-    <preference id="extensions.zotero.__addonRef__.api.elsevier.key" name="extensions.zotero.__addonRef__.api.elsevier.key" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.arxiv.enabled" name="extensions.zotero.__addonRef__.platform.arxiv.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.crossref.enabled" name="extensions.zotero.__addonRef__.platform.crossref.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.pubmed.enabled" name="extensions.zotero.__addonRef__.platform.pubmed.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.wos.enabled" name="extensions.zotero.__addonRef__.platform.wos.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.zjusummon.enabled" name="extensions.zotero.__addonRef__.platform.zjusummon.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.cqvip.enabled" name="extensions.zotero.__addonRef__.platform.cqvip.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.semantic.enabled" name="extensions.zotero.__addonRef__.platform.semantic.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.scopus.enabled" name="extensions.zotero.__addonRef__.platform.scopus.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.biorxiv.enabled" name="extensions.zotero.__addonRef__.platform.biorxiv.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.medrxiv.enabled" name="extensions.zotero.__addonRef__.platform.medrxiv.enabled" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.platform.arxiv.defaultSort" name="extensions.zotero.__addonRef__.platform.arxiv.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.arxiv.maxResults" name="extensions.zotero.__addonRef__.platform.arxiv.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.platform.arxiv.sortOrder" name="extensions.zotero.__addonRef__.platform.arxiv.sortOrder" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.crossref.defaultSort" name="extensions.zotero.__addonRef__.platform.crossref.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.crossref.maxResults" name="extensions.zotero.__addonRef__.platform.crossref.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.platform.pubmed.defaultSort" name="extensions.zotero.__addonRef__.platform.pubmed.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.pubmed.maxResults" name="extensions.zotero.__addonRef__.platform.pubmed.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.platform.wos.defaultSort" name="extensions.zotero.__addonRef__.platform.wos.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.wos.maxResults" name="extensions.zotero.__addonRef__.platform.wos.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.platform.wos.database" name="extensions.zotero.__addonRef__.platform.wos.database" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.zjusummon.defaultSort" name="extensions.zotero.__addonRef__.platform.zjusummon.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.zjusummon.maxResults" name="extensions.zotero.__addonRef__.platform.zjusummon.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.platform.cqvip.defaultSort" name="extensions.zotero.__addonRef__.platform.cqvip.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.cqvip.maxResults" name="extensions.zotero.__addonRef__.platform.cqvip.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.platform.semantic.defaultSort" name="extensions.zotero.__addonRef__.platform.semantic.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.semantic.maxResults" name="extensions.zotero.__addonRef__.platform.semantic.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.platform.scopus.defaultSort" name="extensions.zotero.__addonRef__.platform.scopus.defaultSort" type="string" />
-    <preference id="extensions.zotero.__addonRef__.platform.scopus.maxResults" name="extensions.zotero.__addonRef__.platform.scopus.maxResults" type="int" />
-    <preference id="extensions.zotero.__addonRef__.web.mysearch.baseUrl" name="extensions.zotero.__addonRef__.web.mysearch.baseUrl" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.mysearch.apiKey" name="extensions.zotero.__addonRef__.web.mysearch.apiKey" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.mysearch.mcpPath" name="extensions.zotero.__addonRef__.web.mysearch.mcpPath" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.mysearch.proxyFirst" name="extensions.zotero.__addonRef__.web.mysearch.proxyFirst" type="bool" />
-    <preference id="extensions.zotero.__addonRef__.web.tavily.apiKey" name="extensions.zotero.__addonRef__.web.tavily.apiKey" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.tavily.baseUrl" name="extensions.zotero.__addonRef__.web.tavily.baseUrl" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.tavily.authMode" name="extensions.zotero.__addonRef__.web.tavily.authMode" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.firecrawl.apiKey" name="extensions.zotero.__addonRef__.web.firecrawl.apiKey" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.firecrawl.baseUrl" name="extensions.zotero.__addonRef__.web.firecrawl.baseUrl" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.exa.apiKey" name="extensions.zotero.__addonRef__.web.exa.apiKey" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.exa.baseUrl" name="extensions.zotero.__addonRef__.web.exa.baseUrl" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.xai.apiKey" name="extensions.zotero.__addonRef__.web.xai.apiKey" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.xai.baseUrl" name="extensions.zotero.__addonRef__.web.xai.baseUrl" type="string" />
-    <preference id="extensions.zotero.__addonRef__.web.xai.searchMode" name="extensions.zotero.__addonRef__.web.xai.searchMode" type="string" />
+    <preference
+      id="extensions.zotero.__addonRef__.mcp.server.enabled"
+      name="extensions.zotero.__addonRef__.mcp.server.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.mcp.server.port"
+      name="extensions.zotero.__addonRef__.mcp.server.port"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.general.fetchPDF"
+      name="extensions.zotero.__addonRef__.general.fetchPDF"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.general.defaultSort"
+      name="extensions.zotero.__addonRef__.general.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.general.maxResults"
+      name="extensions.zotero.__addonRef__.general.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.general.logLevel"
+      name="extensions.zotero.__addonRef__.general.logLevel"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.providers.registryUrl"
+      name="extensions.zotero.__addonRef__.providers.registryUrl"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.api.crossref.mailto"
+      name="extensions.zotero.__addonRef__.api.crossref.mailto"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.api.pubmed.key"
+      name="extensions.zotero.__addonRef__.api.pubmed.key"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.api.wos.key"
+      name="extensions.zotero.__addonRef__.api.wos.key"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.api.semanticScholar.key"
+      name="extensions.zotero.__addonRef__.api.semanticScholar.key"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.api.elsevier.key"
+      name="extensions.zotero.__addonRef__.api.elsevier.key"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.arxiv.enabled"
+      name="extensions.zotero.__addonRef__.platform.arxiv.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.crossref.enabled"
+      name="extensions.zotero.__addonRef__.platform.crossref.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.pubmed.enabled"
+      name="extensions.zotero.__addonRef__.platform.pubmed.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.wos.enabled"
+      name="extensions.zotero.__addonRef__.platform.wos.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.zjusummon.enabled"
+      name="extensions.zotero.__addonRef__.platform.zjusummon.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.cqvip.enabled"
+      name="extensions.zotero.__addonRef__.platform.cqvip.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.semantic.enabled"
+      name="extensions.zotero.__addonRef__.platform.semantic.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.scopus.enabled"
+      name="extensions.zotero.__addonRef__.platform.scopus.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.biorxiv.enabled"
+      name="extensions.zotero.__addonRef__.platform.biorxiv.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.medrxiv.enabled"
+      name="extensions.zotero.__addonRef__.platform.medrxiv.enabled"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.arxiv.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.arxiv.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.arxiv.maxResults"
+      name="extensions.zotero.__addonRef__.platform.arxiv.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.arxiv.sortOrder"
+      name="extensions.zotero.__addonRef__.platform.arxiv.sortOrder"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.crossref.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.crossref.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.crossref.maxResults"
+      name="extensions.zotero.__addonRef__.platform.crossref.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.pubmed.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.pubmed.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.pubmed.maxResults"
+      name="extensions.zotero.__addonRef__.platform.pubmed.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.wos.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.wos.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.wos.maxResults"
+      name="extensions.zotero.__addonRef__.platform.wos.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.wos.database"
+      name="extensions.zotero.__addonRef__.platform.wos.database"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.zjusummon.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.zjusummon.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.zjusummon.maxResults"
+      name="extensions.zotero.__addonRef__.platform.zjusummon.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.cqvip.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.cqvip.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.cqvip.maxResults"
+      name="extensions.zotero.__addonRef__.platform.cqvip.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.semantic.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.semantic.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.semantic.maxResults"
+      name="extensions.zotero.__addonRef__.platform.semantic.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.scopus.defaultSort"
+      name="extensions.zotero.__addonRef__.platform.scopus.defaultSort"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.platform.scopus.maxResults"
+      name="extensions.zotero.__addonRef__.platform.scopus.maxResults"
+      type="int"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.mysearch.baseUrl"
+      name="extensions.zotero.__addonRef__.web.mysearch.baseUrl"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.mysearch.apiKey"
+      name="extensions.zotero.__addonRef__.web.mysearch.apiKey"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.mysearch.mcpPath"
+      name="extensions.zotero.__addonRef__.web.mysearch.mcpPath"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.mysearch.proxyFirst"
+      name="extensions.zotero.__addonRef__.web.mysearch.proxyFirst"
+      type="bool"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.tavily.apiKey"
+      name="extensions.zotero.__addonRef__.web.tavily.apiKey"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.tavily.baseUrl"
+      name="extensions.zotero.__addonRef__.web.tavily.baseUrl"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.tavily.authMode"
+      name="extensions.zotero.__addonRef__.web.tavily.authMode"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.firecrawl.apiKey"
+      name="extensions.zotero.__addonRef__.web.firecrawl.apiKey"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.firecrawl.baseUrl"
+      name="extensions.zotero.__addonRef__.web.firecrawl.baseUrl"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.exa.apiKey"
+      name="extensions.zotero.__addonRef__.web.exa.apiKey"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.exa.baseUrl"
+      name="extensions.zotero.__addonRef__.web.exa.baseUrl"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.xai.apiKey"
+      name="extensions.zotero.__addonRef__.web.xai.apiKey"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.xai.baseUrl"
+      name="extensions.zotero.__addonRef__.web.xai.baseUrl"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.web.xai.searchMode"
+      name="extensions.zotero.__addonRef__.web.xai.searchMode"
+      type="string"
+    />
   </preferences>
 
-  <vbox flex="1" style="padding: 10px;">
-
+  <vbox flex="1" style="padding: 10px">
     <!-- ═══ General ═══ -->
     <groupbox>
       <label><html:h2 data-l10n-id="pref-general-title" /></label>
-      <checkbox preference="extensions.zotero.__addonRef__.general.fetchPDF" data-l10n-id="pref-general-fetchpdf" />
-      <hbox align="center" style="margin: 6px 0;">
-        <html:label data-l10n-id="pref-general-default-sort" style="min-width: 120px;" />
-        <menulist preference="extensions.zotero.__addonRef__.general.defaultSort" value="relevance" style="max-width: 160px;">
+      <checkbox
+        preference="extensions.zotero.__addonRef__.general.fetchPDF"
+        data-l10n-id="pref-general-fetchpdf"
+      />
+      <hbox align="center" style="margin: 6px 0">
+        <html:label data-l10n-id="pref-general-default-sort" style="min-width: 120px" />
+        <menulist
+          preference="extensions.zotero.__addonRef__.general.defaultSort"
+          value="relevance"
+          style="max-width: 160px"
+        >
           <menupopup>
             <menuitem label="Relevance" value="relevance" />
             <menuitem label="Date" value="date" />
             <menuitem label="Citations" value="citations" />
           </menupopup>
         </menulist>
-        <html:label data-l10n-id="pref-general-max-results" style="min-width: 100px; margin-left: 16px;" />
-        <html:input type="number" preference="extensions.zotero.__addonRef__.general.maxResults" min="1" max="100" style="max-width: 60px;" />
+        <html:label
+          data-l10n-id="pref-general-max-results"
+          style="min-width: 100px; margin-left: 16px"
+        />
+        <html:input
+          type="number"
+          preference="extensions.zotero.__addonRef__.general.maxResults"
+          min="1"
+          max="100"
+          style="max-width: 60px"
+        />
       </hbox>
     </groupbox>
 
@@ -84,71 +325,153 @@
       <label><html:h2 data-l10n-id="pref-academic-title" /></label>
 
       <!-- Compact enable/disable checkboxes -->
-      <hbox style="flex-wrap: wrap; gap: 4px 0;">
-        <checkbox preference="extensions.zotero.__addonRef__.platform.arxiv.enabled" label="arXiv" style="min-width: 130px;" />
-        <checkbox preference="extensions.zotero.__addonRef__.platform.crossref.enabled" label="Crossref" style="min-width: 130px;" />
-        <checkbox preference="extensions.zotero.__addonRef__.platform.pubmed.enabled" label="PubMed" style="min-width: 130px;" />
+      <hbox style="flex-wrap: wrap; gap: 4px 0">
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.arxiv.enabled"
+          label="arXiv"
+          style="min-width: 130px"
+        />
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.crossref.enabled"
+          label="Crossref"
+          style="min-width: 130px"
+        />
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.pubmed.enabled"
+          label="PubMed"
+          style="min-width: 130px"
+        />
       </hbox>
-      <hbox style="flex-wrap: wrap; gap: 4px 0;">
-        <checkbox preference="extensions.zotero.__addonRef__.platform.wos.enabled" label="Web of Science" style="min-width: 130px;" />
-        <checkbox preference="extensions.zotero.__addonRef__.platform.zjusummon.enabled" label="ZJU Summon" style="min-width: 130px;" />
-        <checkbox preference="extensions.zotero.__addonRef__.platform.cqvip.enabled" label="CQVIP (维普)" style="min-width: 130px;" />
+      <hbox style="flex-wrap: wrap; gap: 4px 0">
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.wos.enabled"
+          label="Web of Science"
+          style="min-width: 130px"
+        />
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.zjusummon.enabled"
+          label="ZJU Summon"
+          style="min-width: 130px"
+        />
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.cqvip.enabled"
+          label="CQVIP (维普)"
+          style="min-width: 130px"
+        />
       </hbox>
-      <hbox style="flex-wrap: wrap; gap: 4px 0;">
-        <checkbox preference="extensions.zotero.__addonRef__.platform.semantic.enabled" label="Semantic Scholar" style="min-width: 130px;" />
-        <checkbox preference="extensions.zotero.__addonRef__.platform.scopus.enabled" label="Scopus" style="min-width: 130px;" />
-        <checkbox preference="extensions.zotero.__addonRef__.platform.biorxiv.enabled" label="bioRxiv" style="min-width: 130px;" />
+      <hbox style="flex-wrap: wrap; gap: 4px 0">
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.semantic.enabled"
+          label="Semantic Scholar"
+          style="min-width: 130px"
+        />
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.scopus.enabled"
+          label="Scopus"
+          style="min-width: 130px"
+        />
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.biorxiv.enabled"
+          label="bioRxiv"
+          style="min-width: 130px"
+        />
       </hbox>
-      <hbox style="margin-bottom: 4px;">
-        <checkbox preference="extensions.zotero.__addonRef__.platform.medrxiv.enabled" label="medRxiv" style="min-width: 130px;" />
+      <hbox style="margin-bottom: 4px">
+        <checkbox
+          preference="extensions.zotero.__addonRef__.platform.medrxiv.enabled"
+          label="medRxiv"
+          style="min-width: 130px"
+        />
       </hbox>
 
       <!-- API Keys (directly visible, not hidden) -->
-      <html:details open="" style="margin-top: 6px;">
-        <html:summary style="cursor: pointer; font-weight: bold; font-size: 0.95em;" data-l10n-id="pref-academic-apikeys" />
-        <vbox style="padding: 6px 0 2px 12px;">
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label data-l10n-id="pref-apikeys-wos" style="min-width: 140px;" />
-            <html:input type="password" preference="extensions.zotero.__addonRef__.api.wos.key" style="flex: 1; max-width: 280px;" />
+      <html:details open="" style="margin-top: 6px">
+        <html:summary
+          style="cursor: pointer; font-weight: bold; font-size: 0.95em"
+          data-l10n-id="pref-academic-apikeys"
+        />
+        <vbox style="padding: 6px 0 2px 12px">
+          <hbox align="center" style="margin: 3px 0">
+            <html:label data-l10n-id="pref-apikeys-wos" style="min-width: 140px" />
+            <html:input
+              type="password"
+              preference="extensions.zotero.__addonRef__.api.wos.key"
+              style="flex: 1; max-width: 280px"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label data-l10n-id="pref-apikeys-elsevier" style="min-width: 140px;" />
-            <html:input type="password" preference="extensions.zotero.__addonRef__.api.elsevier.key" style="flex: 1; max-width: 280px;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label data-l10n-id="pref-apikeys-elsevier" style="min-width: 140px" />
+            <html:input
+              type="password"
+              preference="extensions.zotero.__addonRef__.api.elsevier.key"
+              style="flex: 1; max-width: 280px"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label data-l10n-id="pref-apikeys-pubmed" style="min-width: 140px;" />
-            <html:input type="text" preference="extensions.zotero.__addonRef__.api.pubmed.key" style="flex: 1; max-width: 280px;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label data-l10n-id="pref-apikeys-pubmed" style="min-width: 140px" />
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.api.pubmed.key"
+              style="flex: 1; max-width: 280px"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label data-l10n-id="pref-apikeys-semantic-scholar" style="min-width: 140px;" />
-            <html:input type="text" preference="extensions.zotero.__addonRef__.api.semanticScholar.key" style="flex: 1; max-width: 280px;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label data-l10n-id="pref-apikeys-semantic-scholar" style="min-width: 140px" />
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.api.semanticScholar.key"
+              style="flex: 1; max-width: 280px"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label data-l10n-id="pref-apikeys-crossref-mailto" style="min-width: 140px;" />
-            <html:input type="text" preference="extensions.zotero.__addonRef__.api.crossref.mailto" placeholder="you@example.com" style="flex: 1; max-width: 280px;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label data-l10n-id="pref-apikeys-crossref-mailto" style="min-width: 140px" />
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.api.crossref.mailto"
+              placeholder="you@example.com"
+              style="flex: 1; max-width: 280px"
+            />
           </hbox>
         </vbox>
       </html:details>
 
       <!-- Per-platform advanced settings (collapsed) -->
-      <html:details style="margin-top: 4px;">
-        <html:summary style="cursor: pointer; color: #555; font-size: 0.9em;" data-l10n-id="pref-academic-per-platform" />
-        <vbox style="padding: 4px 0 2px 12px;">
-
+      <html:details style="margin-top: 4px">
+        <html:summary
+          style="cursor: pointer; color: #555; font-size: 0.9em"
+          data-l10n-id="pref-academic-per-platform"
+        />
+        <vbox style="padding: 4px 0 2px 12px">
           <!-- arXiv -->
-          <html:fieldset style="border: 1px solid #ddd; border-radius: 3px; padding: 4px 8px; margin: 3px 0;">
-            <html:legend style="font-size: 0.9em; font-weight: bold;">arXiv</html:legend>
-            <hbox align="center" style="margin: 2px 0;">
-              <html:label data-l10n-id="pref-provider-sort" style="min-width: 90px; font-size: 0.9em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.arxiv.defaultSort" value="" style="max-width: 130px; font-size: 0.9em;">
+          <html:fieldset
+            style="border: 1px solid #ddd; border-radius: 3px; padding: 4px 8px; margin: 3px 0"
+          >
+            <html:legend style="font-size: 0.9em; font-weight: bold">arXiv</html:legend>
+            <hbox align="center" style="margin: 2px 0">
+              <html:label
+                data-l10n-id="pref-provider-sort"
+                style="min-width: 90px; font-size: 0.9em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.arxiv.defaultSort"
+                value=""
+                style="max-width: 130px; font-size: 0.9em"
+              >
                 <menupopup>
                   <menuitem data-l10n-id="pref-sort-use-global" value="" />
                   <menuitem label="Relevance" value="relevance" />
                   <menuitem label="Date" value="date" />
                 </menupopup>
               </menulist>
-              <html:label data-l10n-id="pref-arxiv-sort-order" style="min-width: 80px; margin-left: 12px; font-size: 0.9em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.arxiv.sortOrder" value="descending" style="max-width: 120px; font-size: 0.9em;">
+              <html:label
+                data-l10n-id="pref-arxiv-sort-order"
+                style="min-width: 80px; margin-left: 12px; font-size: 0.9em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.arxiv.sortOrder"
+                value="descending"
+                style="max-width: 120px; font-size: 0.9em"
+              >
                 <menupopup>
                   <menuitem label="Descending" value="descending" />
                   <menuitem label="Ascending" value="ascending" />
@@ -158,11 +481,20 @@
           </html:fieldset>
 
           <!-- Web of Science -->
-          <html:fieldset style="border: 1px solid #ddd; border-radius: 3px; padding: 4px 8px; margin: 3px 0;">
-            <html:legend style="font-size: 0.9em; font-weight: bold;">Web of Science</html:legend>
-            <hbox align="center" style="margin: 2px 0;">
-              <html:label data-l10n-id="pref-provider-sort" style="min-width: 90px; font-size: 0.9em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.wos.defaultSort" value="citations" style="max-width: 130px; font-size: 0.9em;">
+          <html:fieldset
+            style="border: 1px solid #ddd; border-radius: 3px; padding: 4px 8px; margin: 3px 0"
+          >
+            <html:legend style="font-size: 0.9em; font-weight: bold">Web of Science</html:legend>
+            <hbox align="center" style="margin: 2px 0">
+              <html:label
+                data-l10n-id="pref-provider-sort"
+                style="min-width: 90px; font-size: 0.9em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.wos.defaultSort"
+                value="citations"
+                style="max-width: 130px; font-size: 0.9em"
+              >
                 <menupopup>
                   <menuitem data-l10n-id="pref-sort-use-global" value="" />
                   <menuitem label="Relevance" value="relevance" />
@@ -170,8 +502,15 @@
                   <menuitem label="Citations" value="citations" />
                 </menupopup>
               </menulist>
-              <html:label data-l10n-id="pref-wos-database" style="min-width: 80px; margin-left: 12px; font-size: 0.9em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.wos.database" value="WOS" style="max-width: 110px; font-size: 0.9em;">
+              <html:label
+                data-l10n-id="pref-wos-database"
+                style="min-width: 80px; margin-left: 12px; font-size: 0.9em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.wos.database"
+                value="WOS"
+                style="max-width: 110px; font-size: 0.9em"
+              >
                 <menupopup>
                   <menuitem label="WOS (All)" value="WOS" />
                   <menuitem label="WOK" value="WOK" />
@@ -181,12 +520,24 @@
           </html:fieldset>
 
           <!-- Other platforms: Crossref, PubMed, Semantic Scholar, etc. -->
-          <html:fieldset style="border: 1px solid #ddd; border-radius: 3px; padding: 4px 8px; margin: 3px 0;">
-            <html:legend style="font-size: 0.9em; font-weight: bold;" data-l10n-id="pref-academic-other-platforms" />
-            <hbox align="center" style="margin: 2px 0;">
-              <html:label style="min-width: 90px; font-size: 0.9em;">Crossref</html:label>
-              <html:label data-l10n-id="pref-provider-sort" style="min-width: 50px; font-size: 0.85em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.crossref.defaultSort" value="" style="max-width: 120px; font-size: 0.85em;">
+          <html:fieldset
+            style="border: 1px solid #ddd; border-radius: 3px; padding: 4px 8px; margin: 3px 0"
+          >
+            <html:legend
+              style="font-size: 0.9em; font-weight: bold"
+              data-l10n-id="pref-academic-other-platforms"
+            />
+            <hbox align="center" style="margin: 2px 0">
+              <html:label style="min-width: 90px; font-size: 0.9em">Crossref</html:label>
+              <html:label
+                data-l10n-id="pref-provider-sort"
+                style="min-width: 50px; font-size: 0.85em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.crossref.defaultSort"
+                value=""
+                style="max-width: 120px; font-size: 0.85em"
+              >
                 <menupopup>
                   <menuitem data-l10n-id="pref-sort-use-global" value="" />
                   <menuitem label="Relevance" value="relevance" />
@@ -195,10 +546,17 @@
                 </menupopup>
               </menulist>
             </hbox>
-            <hbox align="center" style="margin: 2px 0;">
-              <html:label style="min-width: 90px; font-size: 0.9em;">PubMed</html:label>
-              <html:label data-l10n-id="pref-provider-sort" style="min-width: 50px; font-size: 0.85em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.pubmed.defaultSort" value="" style="max-width: 120px; font-size: 0.85em;">
+            <hbox align="center" style="margin: 2px 0">
+              <html:label style="min-width: 90px; font-size: 0.9em">PubMed</html:label>
+              <html:label
+                data-l10n-id="pref-provider-sort"
+                style="min-width: 50px; font-size: 0.85em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.pubmed.defaultSort"
+                value=""
+                style="max-width: 120px; font-size: 0.85em"
+              >
                 <menupopup>
                   <menuitem data-l10n-id="pref-sort-use-global" value="" />
                   <menuitem label="Relevance" value="relevance" />
@@ -206,10 +564,17 @@
                 </menupopup>
               </menulist>
             </hbox>
-            <hbox align="center" style="margin: 2px 0;">
-              <html:label style="min-width: 90px; font-size: 0.9em;">Semantic Sch.</html:label>
-              <html:label data-l10n-id="pref-provider-sort" style="min-width: 50px; font-size: 0.85em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.semantic.defaultSort" value="" style="max-width: 120px; font-size: 0.85em;">
+            <hbox align="center" style="margin: 2px 0">
+              <html:label style="min-width: 90px; font-size: 0.9em">Semantic Sch.</html:label>
+              <html:label
+                data-l10n-id="pref-provider-sort"
+                style="min-width: 50px; font-size: 0.85em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.semantic.defaultSort"
+                value=""
+                style="max-width: 120px; font-size: 0.85em"
+              >
                 <menupopup>
                   <menuitem data-l10n-id="pref-sort-use-global" value="" />
                   <menuitem label="Relevance" value="relevance" />
@@ -218,10 +583,17 @@
                 </menupopup>
               </menulist>
             </hbox>
-            <hbox align="center" style="margin: 2px 0;">
-              <html:label style="min-width: 90px; font-size: 0.9em;">CQVIP</html:label>
-              <html:label data-l10n-id="pref-provider-sort" style="min-width: 50px; font-size: 0.85em;" />
-              <menulist preference="extensions.zotero.__addonRef__.platform.cqvip.defaultSort" value="" style="max-width: 120px; font-size: 0.85em;">
+            <hbox align="center" style="margin: 2px 0">
+              <html:label style="min-width: 90px; font-size: 0.9em">CQVIP</html:label>
+              <html:label
+                data-l10n-id="pref-provider-sort"
+                style="min-width: 50px; font-size: 0.85em"
+              />
+              <menulist
+                preference="extensions.zotero.__addonRef__.platform.cqvip.defaultSort"
+                value=""
+                style="max-width: 120px; font-size: 0.85em"
+              >
                 <menupopup>
                   <menuitem data-l10n-id="pref-sort-use-global" value="" />
                   <menuitem label="Relevance" value="relevance" />
@@ -231,7 +603,6 @@
               </menulist>
             </hbox>
           </html:fieldset>
-
         </vbox>
       </html:details>
     </groupbox>
@@ -239,100 +610,280 @@
     <!-- ═══ Web Search ═══ -->
     <groupbox>
       <label><html:h2 data-l10n-id="pref-web-title" /></label>
-      <html:p style="color: #666; font-size: 0.85em; margin: 0 0 8px 0;" data-l10n-id="pref-web-description" />
+      <html:p
+        style="color: #666; font-size: 0.85em; margin: 0 0 8px 0"
+        data-l10n-id="pref-web-description"
+      />
 
       <!-- MySearch Proxy (gateway) -->
-      <vbox style="margin: 0 0 8px 0; padding: 6px 8px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px;">
+      <vbox
+        style="
+          margin: 0 0 8px 0;
+          padding: 6px 8px;
+          background: #f8f8f8;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        "
+      >
         <hbox align="center">
-          <html:b style="min-width: 130px;">MySearch Proxy</html:b>
-          <checkbox preference="extensions.zotero.__addonRef__.web.mysearch.proxyFirst" data-l10n-id="pref-web-proxy-first" />
+          <html:b style="min-width: 130px">MySearch Proxy</html:b>
+          <checkbox
+            preference="extensions.zotero.__addonRef__.web.mysearch.proxyFirst"
+            data-l10n-id="pref-web-proxy-first"
+          />
         </hbox>
-        <html:p style="color: #888; font-size: 0.8em; margin: 2px 0 4px 0;" data-l10n-id="pref-web-proxy-hint" />
-        <hbox align="center" style="margin: 2px 0;">
-          <html:label data-l10n-id="pref-web-base-url" style="min-width: 80px; font-size: 0.9em;" />
-          <html:input type="text" preference="extensions.zotero.__addonRef__.web.mysearch.baseUrl" placeholder="http://127.0.0.1:8000" style="flex: 1; max-width: 260px;" />
-          <html:label data-l10n-id="pref-web-api-key" style="min-width: 60px; margin-left: 8px; font-size: 0.9em;" />
-          <html:input type="password" preference="extensions.zotero.__addonRef__.web.mysearch.apiKey" style="flex: 1; max-width: 160px;" />
+        <html:p
+          style="color: #888; font-size: 0.8em; margin: 2px 0 4px 0"
+          data-l10n-id="pref-web-proxy-hint"
+        />
+        <hbox align="center" style="margin: 2px 0">
+          <html:label data-l10n-id="pref-web-base-url" style="min-width: 80px; font-size: 0.9em" />
+          <html:input
+            type="text"
+            preference="extensions.zotero.__addonRef__.web.mysearch.baseUrl"
+            placeholder="http://127.0.0.1:8000"
+            style="flex: 1; max-width: 260px"
+          />
+          <html:label
+            data-l10n-id="pref-web-api-key"
+            style="min-width: 60px; margin-left: 8px; font-size: 0.9em"
+          />
+          <html:input
+            type="password"
+            preference="extensions.zotero.__addonRef__.web.mysearch.apiKey"
+            style="flex: 1; max-width: 160px"
+          />
         </hbox>
       </vbox>
 
       <!-- Individual API Keys (compact) -->
-      <html:p style="font-weight: bold; font-size: 0.9em; margin: 4px 0;" data-l10n-id="pref-web-individual-title" />
-      <html:p style="color: #888; font-size: 0.8em; margin: 0 0 4px 0;" data-l10n-id="pref-web-individual-hint" />
-      <vbox style="padding: 0 0 0 4px;">
-        <hbox align="center" style="margin: 3px 0;">
-          <html:label style="min-width: 80px; font-size: 0.9em;">Tavily</html:label>
-          <html:input type="password" preference="extensions.zotero.__addonRef__.web.tavily.apiKey" placeholder="tvly-..." style="flex: 1; max-width: 320px;" />
+      <html:p
+        style="font-weight: bold; font-size: 0.9em; margin: 4px 0"
+        data-l10n-id="pref-web-individual-title"
+      />
+      <html:p
+        style="color: #888; font-size: 0.8em; margin: 0 0 4px 0"
+        data-l10n-id="pref-web-individual-hint"
+      />
+      <vbox style="padding: 0 0 0 4px">
+        <hbox align="center" style="margin: 3px 0">
+          <html:label style="min-width: 80px; font-size: 0.9em">Tavily</html:label>
+          <html:input
+            type="password"
+            preference="extensions.zotero.__addonRef__.web.tavily.apiKey"
+            placeholder="tvly-..."
+            style="flex: 1; max-width: 320px"
+          />
         </hbox>
-        <hbox align="center" style="margin: 3px 0;">
-          <html:label style="min-width: 80px; font-size: 0.9em;">Firecrawl</html:label>
-          <html:input type="password" preference="extensions.zotero.__addonRef__.web.firecrawl.apiKey" placeholder="fc-..." style="flex: 1; max-width: 320px;" />
+        <hbox align="center" style="margin: 3px 0">
+          <html:label style="min-width: 80px; font-size: 0.9em">Firecrawl</html:label>
+          <html:input
+            type="password"
+            preference="extensions.zotero.__addonRef__.web.firecrawl.apiKey"
+            placeholder="fc-..."
+            style="flex: 1; max-width: 320px"
+          />
         </hbox>
-        <hbox align="center" style="margin: 3px 0;">
-          <html:label style="min-width: 80px; font-size: 0.9em;">Exa</html:label>
-          <html:input type="password" preference="extensions.zotero.__addonRef__.web.exa.apiKey" style="flex: 1; max-width: 320px;" />
+        <hbox align="center" style="margin: 3px 0">
+          <html:label style="min-width: 80px; font-size: 0.9em">Exa</html:label>
+          <html:input
+            type="password"
+            preference="extensions.zotero.__addonRef__.web.exa.apiKey"
+            style="flex: 1; max-width: 320px"
+          />
         </hbox>
-        <hbox align="center" style="margin: 3px 0;">
-          <html:label style="min-width: 80px; font-size: 0.9em;">xAI</html:label>
-          <html:input type="password" preference="extensions.zotero.__addonRef__.web.xai.apiKey" placeholder="xai-..." style="flex: 1; max-width: 320px;" />
+        <hbox align="center" style="margin: 3px 0">
+          <html:label style="min-width: 80px; font-size: 0.9em">xAI</html:label>
+          <html:input
+            type="password"
+            preference="extensions.zotero.__addonRef__.web.xai.apiKey"
+            placeholder="xai-..."
+            style="flex: 1; max-width: 320px"
+          />
         </hbox>
       </vbox>
 
       <!-- Web Advanced -->
-      <html:details style="margin-top: 6px;">
-        <html:summary style="cursor: pointer; color: #555; font-size: 0.9em;" data-l10n-id="pref-advanced-settings" />
-        <vbox style="padding: 4px 0 2px 12px;">
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label style="min-width: 110px; font-size: 0.85em;">Tavily Base URL</html:label>
-            <html:input type="text" preference="extensions.zotero.__addonRef__.web.tavily.baseUrl" style="flex: 1; max-width: 250px; font-size: 0.85em;" />
+      <html:details style="margin-top: 6px">
+        <html:summary
+          style="cursor: pointer; color: #555; font-size: 0.9em"
+          data-l10n-id="pref-advanced-settings"
+        />
+        <vbox style="padding: 4px 0 2px 12px">
+          <hbox align="center" style="margin: 3px 0">
+            <html:label style="min-width: 110px; font-size: 0.85em">Tavily Base URL</html:label>
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.web.tavily.baseUrl"
+              style="flex: 1; max-width: 250px; font-size: 0.85em"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label style="min-width: 110px; font-size: 0.85em;">Tavily Auth</html:label>
-            <menulist preference="extensions.zotero.__addonRef__.web.tavily.authMode" value="body" style="max-width: 150px; font-size: 0.85em;">
+          <hbox align="center" style="margin: 3px 0">
+            <html:label style="min-width: 110px; font-size: 0.85em">Tavily Auth</html:label>
+            <menulist
+              preference="extensions.zotero.__addonRef__.web.tavily.authMode"
+              value="body"
+              style="max-width: 150px; font-size: 0.85em"
+            >
               <menupopup>
                 <menuitem label="Body (api_key)" value="body" />
                 <menuitem label="Bearer" value="bearer" />
               </menupopup>
             </menulist>
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label style="min-width: 110px; font-size: 0.85em;">Firecrawl Base URL</html:label>
-            <html:input type="text" preference="extensions.zotero.__addonRef__.web.firecrawl.baseUrl" style="flex: 1; max-width: 250px; font-size: 0.85em;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label style="min-width: 110px; font-size: 0.85em">Firecrawl Base URL</html:label>
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.web.firecrawl.baseUrl"
+              style="flex: 1; max-width: 250px; font-size: 0.85em"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label style="min-width: 110px; font-size: 0.85em;">Exa Base URL</html:label>
-            <html:input type="text" preference="extensions.zotero.__addonRef__.web.exa.baseUrl" style="flex: 1; max-width: 250px; font-size: 0.85em;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label style="min-width: 110px; font-size: 0.85em">Exa Base URL</html:label>
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.web.exa.baseUrl"
+              style="flex: 1; max-width: 250px; font-size: 0.85em"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label style="min-width: 110px; font-size: 0.85em;">xAI Base URL</html:label>
-            <html:input type="text" preference="extensions.zotero.__addonRef__.web.xai.baseUrl" style="flex: 1; max-width: 250px; font-size: 0.85em;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label style="min-width: 110px; font-size: 0.85em">xAI Base URL</html:label>
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.web.xai.baseUrl"
+              style="flex: 1; max-width: 250px; font-size: 0.85em"
+            />
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label style="min-width: 110px; font-size: 0.85em;" data-l10n-id="pref-web-xai-search-mode" />
-            <menulist preference="extensions.zotero.__addonRef__.web.xai.searchMode" value="official" style="max-width: 200px; font-size: 0.85em;">
+          <hbox align="center" style="margin: 3px 0">
+            <html:label
+              style="min-width: 110px; font-size: 0.85em"
+              data-l10n-id="pref-web-xai-search-mode"
+            />
+            <menulist
+              preference="extensions.zotero.__addonRef__.web.xai.searchMode"
+              value="official"
+              style="max-width: 200px; font-size: 0.85em"
+            >
               <menupopup>
                 <menuitem label="Official (Responses API)" value="official" />
                 <menuitem label="Compatible (Social Gateway)" value="compatible" />
               </menupopup>
             </menulist>
           </hbox>
-          <hbox align="center" style="margin: 3px 0;">
-            <html:label style="min-width: 110px; font-size: 0.85em;">Proxy MCP Path</html:label>
-            <html:input type="text" preference="extensions.zotero.__addonRef__.web.mysearch.mcpPath" style="max-width: 120px; font-size: 0.85em;" />
+          <hbox align="center" style="margin: 3px 0">
+            <html:label style="min-width: 110px; font-size: 0.85em">Proxy MCP Path</html:label>
+            <html:input
+              type="text"
+              preference="extensions.zotero.__addonRef__.web.mysearch.mcpPath"
+              style="max-width: 120px; font-size: 0.85em"
+            />
           </hbox>
         </vbox>
       </html:details>
+    </groupbox>
+
+    <!-- ═══ Pluggable search providers ═══ -->
+    <groupbox>
+      <label><html:h2 data-l10n-id="pref-providers-title" /></label>
+      <html:p
+        style="color: #666; font-size: 0.85em; margin: 0 0 8px 0"
+        data-l10n-id="pref-providers-desc"
+      />
+      <html:table style="width: 100%; border-collapse: collapse; margin-bottom: 8px">
+        <html:thead>
+          <html:tr style="text-align: left">
+            <html:th style="padding: 4px">ID</html:th>
+            <html:th style="padding: 4px">Name</html:th>
+            <html:th style="padding: 4px">Ver</html:th>
+            <html:th style="padding: 4px">Kind</html:th>
+            <html:th style="padding: 4px">User</html:th>
+          </html:tr>
+        </html:thead>
+        <html:tbody id="zrs-provider-list" />
+      </html:table>
+      <hbox align="center" style="flex-wrap: wrap; gap: 6px; margin-bottom: 8px">
+        <html:button id="zrs-provider-refresh" data-l10n-id="pref-providers-refresh" />
+        <html:button id="zrs-provider-import" data-l10n-id="pref-providers-import" />
+        <html:button id="zrs-provider-reload" data-l10n-id="pref-providers-reload" />
+      </hbox>
+      <hbox align="center" style="margin: 6px 0">
+        <html:label data-l10n-id="pref-providers-registry-url" style="min-width: 120px" />
+        <html:input
+          type="url"
+          preference="extensions.zotero.__addonRef__.providers.registryUrl"
+          placeholder="https://..."
+          style="flex: 1; max-width: 420px"
+        />
+        <html:button
+          id="zrs-provider-registry-check"
+          data-l10n-id="pref-providers-registry-check"
+          style="margin-left: 8px"
+        />
+      </hbox>
+    </groupbox>
+
+    <!-- ═══ Agent Skills ═══ -->
+    <groupbox>
+      <label><html:h2 data-l10n-id="pref-skills-title" /></label>
+      <html:p
+        style="color: #666; font-size: 0.85em; margin: 0 0 8px 0"
+        data-l10n-id="pref-skills-description"
+      />
+      <hbox align="center" style="margin-bottom: 8px">
+        <html:label
+          for="skill-target-select"
+          data-l10n-id="pref-skills-target-label"
+          style="min-width: 100px"
+        />
+        <html:select id="skill-target-select" style="flex: 1; max-width: 260px">
+          <html:option value="cursor">Cursor</html:option>
+          <html:option value="claude-code">Claude Code</html:option>
+          <html:option value="codex">Codex CLI</html:option>
+          <html:option value="clipboard" data-l10n-id="pref-skills-target-clipboard" />
+        </html:select>
+      </hbox>
+      <hbox style="gap: 8px; margin-bottom: 8px">
+        <html:button
+          id="export-skill-button"
+          data-l10n-id="pref-skills-export-button"
+          style="min-width: 120px"
+        />
+        <html:button
+          id="install-skill-button"
+          data-l10n-id="pref-skills-install-button"
+          style="min-width: 120px"
+        />
+      </hbox>
+      <html:div id="skill-export-message" style="font-size: 12px; color: #333; margin-top: 4px" />
     </groupbox>
 
     <!-- ═══ Infrastructure ═══ -->
     <groupbox>
       <label><html:h2 data-l10n-id="pref-infra-title" /></label>
       <hbox align="center">
-        <checkbox preference="extensions.zotero.__addonRef__.mcp.server.enabled" data-l10n-id="pref-server-enabled" />
-        <html:label data-l10n-id="pref-server-port" style="min-width: 50px; margin-left: 16px;" />
-        <html:input type="number" preference="extensions.zotero.__addonRef__.mcp.server.port" min="1024" max="65535" style="max-width: 80px;" />
-        <html:label data-l10n-id="pref-general-log-level" style="min-width: 70px; margin-left: 16px;" />
-        <menulist preference="extensions.zotero.__addonRef__.general.logLevel" value="info" style="max-width: 100px;">
+        <checkbox
+          preference="extensions.zotero.__addonRef__.mcp.server.enabled"
+          data-l10n-id="pref-server-enabled"
+        />
+        <html:label data-l10n-id="pref-server-port" style="min-width: 50px; margin-left: 16px" />
+        <html:input
+          id="zrs-mcp-port-input"
+          type="number"
+          preference="extensions.zotero.__addonRef__.mcp.server.port"
+          min="1024"
+          max="65535"
+          style="max-width: 80px"
+        />
+        <html:label
+          data-l10n-id="pref-general-log-level"
+          style="min-width: 70px; margin-left: 16px"
+        />
+        <menulist
+          preference="extensions.zotero.__addonRef__.general.logLevel"
+          value="info"
+          style="max-width: 100px"
+        >
           <menupopup>
             <menuitem label="Debug" value="debug" />
             <menuitem label="Info" value="info" />
@@ -342,6 +893,5 @@
         </menulist>
       </hbox>
     </groupbox>
-
   </vbox>
 </prefpane>

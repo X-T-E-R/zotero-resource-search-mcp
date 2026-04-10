@@ -62,7 +62,9 @@ export class ExaClient {
       query: opts.query,
       answer: resp.data?.answer ?? "",
       results,
-      citations: results.filter((r: any) => r.url).map((r: any) => ({ title: r.title, url: r.url })),
+      citations: results
+        .filter((r: any) => r.url)
+        .map((r: any) => ({ title: r.title, url: r.url })),
     };
   }
 }

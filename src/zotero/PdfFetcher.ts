@@ -31,7 +31,12 @@ export class PdfFetcher {
 
       const resolverResult = await this.tryZoteroResolvers(item);
       if (resolverResult) {
-        return { ok: true, itemKey: resolverResult.key, filename: resolverResult.attachmentFilename, message: "PDF fetched via Zotero resolvers" };
+        return {
+          ok: true,
+          itemKey: resolverResult.key,
+          filename: resolverResult.attachmentFilename,
+          message: "PDF fetched via Zotero resolvers",
+        };
       }
 
       return { ok: false, message: "Could not find accessible PDF" };

@@ -1,7 +1,7 @@
 import { HttpClient } from "../../infra/HttpClient";
 import { configProvider } from "../../infra/ConfigProvider";
 import { logger } from "../../infra/Logger";
-import { parseCrossrefItem } from "../academic/CrossrefSearchProvider";
+import { parseCrossrefItem } from "../shared/crossrefParse";
 import type { ResourceItem, MetadataResolver } from "../../models/types";
 import { providerRegistry } from "../registry";
 
@@ -13,28 +13,19 @@ export class CrossrefResolver implements MetadataResolver {
 
   private http = new HttpClient({ baseURL: BASE_URL, timeout: 30_000 });
 
-  async resolve(
-    identifier: string,
-    type?: string,
-  ): Promise<ResourceItem | null> {
+  async resolve(identifier: string, type?: string): Promise<ResourceItem | null> {
     const doi = this.sanitizeDoi(identifier);
     if (!doi) {
       logger.warn("Invalid DOI provided to CrossrefResolver", identifier);
       return null;
     }
 
-    const mailto = configProvider.getString(
-      "api.crossref.mailto",
-      "paper-search-mcp@example.com",
-    );
+    const mailto = configProvider.getString("api.crossref.mailto", "paper-search-mcp@example.com");
 
     try {
-      const response = await this.http.get<any>(
-        `/${encodeURIComponent(doi)}`,
-        {
-          params: { mailto },
-        },
-      );
+      const response = await this.http.get<any>(`/${encodeURIComponent(doi)}`, {
+        params: { mailto },
+      });
 
       if (response.data?.message) {
         return parseCrossrefItem(response.data.message);

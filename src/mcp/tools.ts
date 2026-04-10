@@ -61,7 +61,16 @@ const MCP_TOOLS: ToolSchema[] = [
         },
         intent: {
           type: "string",
-          enum: ["auto", "factual", "status", "comparison", "tutorial", "exploratory", "news", "resource"],
+          enum: [
+            "auto",
+            "factual",
+            "status",
+            "comparison",
+            "tutorial",
+            "exploratory",
+            "news",
+            "resource",
+          ],
           description: "Query intent hint (default: auto)",
         },
         strategy: {
@@ -80,8 +89,14 @@ const MCP_TOOLS: ToolSchema[] = [
           description: 'Search sources, e.g. ["web"], ["x"], or ["web","x"]',
         },
         max_results: { type: "number", description: "Maximum results (default: 5)" },
-        include_content: { type: "boolean", description: "Include page full text (default: false)" },
-        include_answer: { type: "boolean", description: "Include AI-generated answer (default: true)" },
+        include_content: {
+          type: "boolean",
+          description: "Include page full text (default: false)",
+        },
+        include_answer: {
+          type: "boolean",
+          description: "Include AI-generated answer (default: true)",
+        },
         include_domains: {
           type: "array",
           items: { type: "string" },
@@ -201,7 +216,8 @@ const MCP_TOOLS: ToolSchema[] = [
       properties: {
         flat: {
           type: "boolean",
-          description: "If true, return a flat list with full paths instead of a tree (default: false)",
+          description:
+            "If true, return a flat list with full paths instead of a tree (default: false)",
         },
       },
     },

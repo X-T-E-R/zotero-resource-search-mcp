@@ -4,9 +4,7 @@ export { initLocale, getString, getLocaleID };
 
 function initLocale() {
   const l10n = new (
-    typeof Localization === "undefined"
-      ? ztoolkit.getGlobal("Localization")
-      : Localization
+    typeof Localization === "undefined" ? ztoolkit.getGlobal("Localization") : Localization
   )([`${config.addonRef}-addon.ftl`, `${config.addonRef}-preferences.ftl`], true);
   addon.data.locale = {
     current: l10n,

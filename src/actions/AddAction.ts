@@ -36,15 +36,22 @@ export class AddAction {
     const endTimer = logger.time("AddAction");
 
     try {
-      const resolvedCollectionKey = this.resolveCollection(params.collectionKey, params.collectionPath);
+      const resolvedCollectionKey = this.resolveCollection(
+        params.collectionKey,
+        params.collectionPath,
+      );
 
       if (item) {
         const dupResult = await duplicateChecker.check(item);
         if (dupResult.isDuplicate && dupResult.existingKey) {
           if (resolvedCollectionKey) {
-            const alreadyInTarget = dupResult.existingCollections?.includes(resolvedCollectionKey) ?? false;
+            const alreadyInTarget =
+              dupResult.existingCollections?.includes(resolvedCollectionKey) ?? false;
             if (!alreadyInTarget) {
-              const added = await collectionHelper.addItemToCollection(dupResult.existingKey, resolvedCollectionKey);
+              const added = await collectionHelper.addItemToCollection(
+                dupResult.existingKey,
+                resolvedCollectionKey,
+              );
               endTimer();
               let result: AddResult = {
                 ok: true,
@@ -113,7 +120,12 @@ export class AddAction {
       }
 
       endTimer();
-      const addResult: AddResult = { ok: true, key: addedKey, title: addedTitle, message: addedMsg };
+      const addResult: AddResult = {
+        ok: true,
+        key: addedKey,
+        title: addedTitle,
+        message: addedMsg,
+      };
 
       if (fetchPDF && addedKey) {
         addResult.pdf = await pdfFetcher.fetchForItem(addedKey);

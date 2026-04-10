@@ -1,6 +1,6 @@
 <p align="center">
   <b>Zotero Resource Search MCP</b><br/>
-  Academic &amp; web search, lookup, and Zotero integration — via MCP.
+  Search executor for Zotero — MCP tools, built-in sources, and your own packages.
 </p>
 
 <p align="center">
@@ -16,31 +16,37 @@
 
 ---
 
-A **Zotero 7+** plugin (manifest: `strict_min_version` 6.999 → Zotero 7.0 and newer; `strict_max_version` open) that runs a **Streamable HTTP MCP** server inside Zotero so AI assistants can search academic and web sources, resolve identifiers, add items, list collections, and fetch PDFs through **8 unified tools**.
+## What is this?
 
-> **Note on ZJU Summon:** The optional ZJU Summon provider is intended for **on-campus / institutional IP** access. It is not a general public API — enable it only when you are on an allowed network.
+A **Zotero 7+** add-on that embeds a **Streamable HTTP MCP** server. AI clients get **8 tools** to search literature and the web, resolve identifiers, extract URLs, and write into your library — without shipping a fixed, closed list of databases.
+
+| Layer | What you get |
+|-------|----------------|
+| **Executor** | MCP server + tool handlers + Zotero integration (collections, PDFs, duplicates). |
+| **Default academic sources** | Shipped as pluggable packages (`manifest.json` + `provider.js`): arXiv, Crossref, PubMed, WoS, Semantic Scholar, Scopus, CQVIP, bioRxiv, medRxiv, etc. |
+| **Optional ZJU Summon** | Campus / **institutional IP** only — not a public API. Enable only on allowed networks. |
+| **Web search** | Router over Tavily / Firecrawl / Exa / xAI, or an optional [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) gateway. |
+| **Your sources** | Add or override packages: **Import .zip**, drop folders under the profile path, or use a **remote registry** URL in settings. |
+
+Design rationale: [docs/DESIGN.md](./docs/DESIGN.md). Authoring custom sources: [docs/development/provider-sdk.md](./docs/development/provider-sdk.md).
 
 ---
 
 ## Quick start
 
-### 1. Install the plugin
+### 1. Install
 
-1. Download the latest `.xpi` from [Releases](https://github.com/X-T-E-R/zotero-resource-search-mcp/releases)
+1. Download the latest `.xpi` from [Releases](https://github.com/X-T-E-R/zotero-resource-search-mcp/releases).
 2. Zotero → `Tools` → `Add-ons` → gear → `Install Add-on From File…`
-3. Restart Zotero
+3. Restart Zotero.
 
-After installation, Zotero’s add-on updater can use the published `update.json` from GitHub (see `update_url` in the built manifest). Use **Check for Updates** in the Add-ons manager when you want to upgrade.
+Updates: the built-in `update_url` points at GitHub `update.json`; use **Add-ons → Check for Updates** when you want to upgrade.
 
-### 2. Enable the MCP server
+### 2. Enable MCP
 
-Zotero → `Edit` → `Settings` → **Resource Search MCP**:
-
-- Ensure the MCP server is enabled (default port **`23121`**)
+Zotero → `Edit` → `Settings` → **Resource Search MCP** → enable **MCP server** (default port **23121**).
 
 ### 3. Connect your AI client
-
-#### MCP configuration
 
 ```json
 {
@@ -53,41 +59,24 @@ Zotero → `Edit` → `Settings` → **Resource Search MCP**:
 }
 ```
 
-**Where to put this**
-
-| Client | Location |
-|--------|----------|
-| **Cursor IDE** | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) |
-| **Claude Desktop** | `claude_desktop_config.json` ([docs](https://modelcontextprotocol.io/quickstart/user)) |
+| Client | Where to put the config |
+|--------|-------------------------|
+| **Cursor** | `.cursor/mcp.json` or `~/.cursor/mcp.json` |
+| **Claude Desktop** | `claude_desktop_config.json` ([MCP docs](https://modelcontextprotocol.io/quickstart/user)) |
 | **Claude Code** | `claude mcp add --transport http zotero-resource-search http://127.0.0.1:23121/mcp` |
-| **Cherry Studio** | Settings → MCP Servers → import JSON |
+| **Cherry Studio** | Settings → MCP → import JSON |
 | **Gemini CLI** | `~/.gemini/settings.json` |
-| **Chatbox** | Settings → MCP server configuration |
+| **Chatbox** | MCP server settings |
 | **Trae AI** | Ctrl+U → AI Management → MCP |
-| **Cline (VS Code)** | MCP Servers → Advanced Settings |
+| **Cline (VS Code)** | MCP Servers → Advanced |
 | **Continue.dev** | `~/.continue/config.json` |
 | **Codex CLI** | `codex mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http` |
 | **Qwen Code** | `qwen mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http` |
 
-#### Agent Skill (recommended)
+### 4. Agent Skill (recommended)
 
-Copy [`skill/SKILL.md`](./skill/SKILL.md) into your IDE skill folder, e.g.:
-
-```bash
-mkdir -p ~/.cursor/skills/zotero-resource-search-mcp
-cp skill/SKILL.md ~/.cursor/skills/zotero-resource-search-mcp/
-```
-
----
-
-## Features
-
-- **Academic search** — arXiv, Crossref, PubMed, Web of Science, Semantic Scholar, Scopus, CQVIP, bioRxiv, medRxiv; optional **ZJU Summon** (institutional IP only, see note above)
-- **Web search** — Tavily, Firecrawl, Exa, xAI, or a [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) gateway with routing similar to upstream
-- **Web research** — search + scrape + optional social/X-style paths (when configured)
-- **Resource lookup** — DOI / PMID / arXiv / ISBN, or URL content extraction
-- **Zotero integration** — `resource_add` with collection paths, duplicate rules, optional PDF fetch
-- **Platform status** — academic + web provider health in one call
+- **From Zotero:** Settings → **Agent Skills** → choose target → **Export** or **Install to IDE** (embeds the current port).
+- **From repo:** copy [`docs/skills/SKILL.md`](./docs/skills/SKILL.md) into e.g. `~/.cursor/skills/zotero-resource-search-mcp/SKILL.md`.
 
 ---
 
@@ -95,70 +84,79 @@ cp skill/SKILL.md ~/.cursor/skills/zotero-resource-search-mcp/
 
 | Tool | Purpose |
 |------|---------|
-| `academic_search` | Federated academic search |
-| `web_search` | Unified web search (router) |
-| `web_research` | Multi-step web research |
-| `resource_lookup` | Identifier lookup or URL extract |
-| `resource_add` | Add items / URLs to the library |
-| `collection_list` | List collections (tree or flat) |
-| `resource_pdf` | Fetch PDF for an existing item |
-| `platform_status` | Status by source type |
+| `academic_search` | Search registered academic providers |
+| `web_search` | Unified web search |
+| `web_research` | Multi-step research (search + scrape + optional social) |
+| `resource_lookup` | DOI / PMID / arXiv / ISBN or URL extract |
+| `resource_add` | Add items or URLs to the library |
+| `collection_list` | List collections |
+| `resource_pdf` | Fetch PDF for an item |
+| `platform_status` | Academic + web health |
 
-Full parameters and examples → [`skill/SKILL.md`](./skill/SKILL.md)
+Full parameter reference: [`docs/skills/SKILL.md`](./docs/skills/SKILL.md).
 
 ---
 
-## Plugin settings (summary)
+## Settings overview
 
 - **General** — default sort, max results, default `fetchPDF`
-- **Academic** — enable platforms, API keys, per-provider advanced options
-- **Web** — MySearch Proxy and/or individual provider keys
+- **Academic** — enable built-in platforms, API keys, per-platform options
+- **Web** — MySearch Proxy and/or Tavily, Firecrawl, Exa, xAI
+- **Pluggable Search Providers** — list, import zip, reload, registry URL
+- **Agent Skills** — export / install `SKILL.md` for Cursor, Claude Code, Codex
 - **Infrastructure** — MCP port, log level
+
+User provider directory: `<Zotero profile>/zotero-resource-search/providers/<id>/`.
 
 ---
 
-## Building from source
+## Build from source
 
-**Prerequisites:** Node.js 18+, npm, Git; **Zotero** 7+ for running the `.xpi`.
+Requires **Node.js 18+**, **npm**, **Git**, and **Zotero 7+** to run the XPI.
 
 ```bash
 git clone https://github.com/X-T-E-R/zotero-resource-search-mcp.git
 cd zotero-resource-search-mcp
 npm install
 npm run build    # → .scaffold/build/zotero-resource-search-mcp.xpi
-npm start        # dev: hot reload with local Zotero
+npm start        # dev + hot reload
 ```
 
-Release maintainers: after bumping `package.json` version and tagging, CI can build and attach assets. Locally you can run `npm run prepare-release` to regenerate root `update.json` / `update-beta.json` (used for add-on update manifests).
+Release flow: bump `package.json`, `npm run prepare-release`, tag `vX.Y.Z`, push (see [docs/development/versioning.md](./docs/development/versioning.md)).
 
 ---
 
-## Project layout
+## Repository layout
 
 ```
+docs/
+  DESIGN.md
+  skills/SKILL.md
+  development/
+    versioning.md
+    provider-sdk.md
 src/
-├── actions/          # Search, add, lookup
-├── mcp/              # MCP tools + JSON-RPC handling
-├── providers/
-│   ├── academic/     # Academic search providers
-│   ├── web/          # Web clients + router
-│   └── resolvers/    # e.g. Crossref
-├── zotero/           # Collections, PDF, duplicates
-addon/                # manifest, prefs, preferences UI, locales
-skill/SKILL.md        # Agent-oriented tool reference
+  actions/           # Search, add, lookup
+  mcp/               # Tools + JSON-RPC
+  providers/
+    packages/        # Built-in provider sources (→ addon/providers)
+    loader.ts        # Load builtin + user packages
+    web/             # Web router + clients
+  zotero/            # Collections, PDF, duplicates
+addon/               # Manifest, prefs UI, locales, built providers
 ```
 
 ---
 
 ## Troubleshooting
 
-| Issue | What to try |
-|-------|-------------|
-| MCP connection failed | Zotero running, server enabled, correct port in settings |
-| Tools not listed | Restart the AI client after editing MCP config |
-| Academic provider unavailable | Check API keys and `platform_status` |
-| Web search empty | Configure at least one web provider or MySearch Proxy |
-| ZJU Summon no results | Requires eligible institutional network / IP |
+| Issue | Try |
+|-------|-----|
+| Cannot connect to MCP | Zotero running, server enabled, port matches config |
+| Tools missing in client | Restart the client after editing MCP config |
+| Academic source missing | `platform_status`; enable platform; add API key if required |
+| Web search empty | Configure at least one web key or MySearch Proxy |
+| Custom provider fails | Check debug log; validate manifest + `permissions.urls` |
 
 ---
 
@@ -172,5 +170,5 @@ skill/SKILL.md        # Agent-oriented tool reference
 
 ## Acknowledgments
 
-- Web routing patterns adapted from [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) (skernelx)
-- Built with [zotero-plugin-toolkit](https://github.com/windingwind/zotero-plugin-toolkit) and [zotero-plugin-scaffold](https://github.com/northword/zotero-plugin-scaffold)
+- Web routing influenced by [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) (skernelx)
+- [zotero-plugin-toolkit](https://github.com/windingwind/zotero-plugin-toolkit), [zotero-plugin-scaffold](https://github.com/northword/zotero-plugin-scaffold)

@@ -142,7 +142,9 @@ async function handleResourceLookup(args: any): Promise<any> {
 
   if (url && typeof url === "string") {
     if (!webSearchRouter.hasAnyProvider()) {
-      return { error: "No web extraction provider is configured. Add API keys in plugin settings." };
+      return {
+        error: "No web extraction provider is configured. Add API keys in plugin settings.",
+      };
     }
     try {
       const extracted = await webSearchRouter.extractUrl({

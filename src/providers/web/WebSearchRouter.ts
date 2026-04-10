@@ -53,8 +53,21 @@ export class WebSearchRouter {
     const mode = opts.mode ?? "auto";
     const sources = opts.sources ?? ["web"];
     const intent = this.resolveIntent(opts.query, mode, opts.intent ?? "auto", sources);
-    const strategy = this.resolveStrategy(mode, intent, opts.strategy ?? "auto", sources, opts.includeContent ?? false);
-    const decision = this.routeSearch(opts.query, mode, intent, opts.provider ?? "auto", sources, opts.includeContent ?? false);
+    const strategy = this.resolveStrategy(
+      mode,
+      intent,
+      opts.strategy ?? "auto",
+      sources,
+      opts.includeContent ?? false,
+    );
+    const decision = this.routeSearch(
+      opts.query,
+      mode,
+      intent,
+      opts.provider ?? "auto",
+      sources,
+      opts.includeContent ?? false,
+    );
 
     logger.info(`Web search route: ${decision.provider} (${decision.reason})`);
 
@@ -243,7 +256,11 @@ export class WebSearchRouter {
     const pages: WebResearchResponse["pages"] = [];
     for (const url of urls) {
       try {
-        const extracted = await this.extractUrl({ url, formats: ["markdown"], onlyMainContent: true });
+        const extracted = await this.extractUrl({
+          url,
+          formats: ["markdown"],
+          onlyMainContent: true,
+        });
         const content = extracted.content ?? "";
         pages.push({
           url: extracted.url,
@@ -342,8 +359,16 @@ export class WebSearchRouter {
   ): RouteDecision {
     if (provider !== "auto") {
       const mapping: Record<string, () => RouteDecision> = {
-        tavily: () => ({ provider: "tavily", reason: "Explicit Tavily", tavily_topic: mode === "news" ? "news" : "general" }),
-        firecrawl: () => ({ provider: "firecrawl", reason: "Explicit Firecrawl", firecrawl_categories: this.firecrawlCategories(mode, intent) }),
+        tavily: () => ({
+          provider: "tavily",
+          reason: "Explicit Tavily",
+          tavily_topic: mode === "news" ? "news" : "general",
+        }),
+        firecrawl: () => ({
+          provider: "firecrawl",
+          reason: "Explicit Firecrawl",
+          firecrawl_categories: this.firecrawlCategories(mode, intent),
+        }),
         exa: () => ({ provider: "exa", reason: "Explicit Exa" }),
         xai: () => ({ provider: "xai", reason: "Explicit xAI", sources }),
       };
@@ -352,45 +377,78 @@ export class WebSearchRouter {
 
     if (mode === "social" || sources.includes("x")) {
       if (!this.xai.isConfigured() && this.tavily.isConfigured()) {
-        return { provider: "tavily", reason: "xAI not configured, fallback to Tavily", tavily_topic: "general" };
+        return {
+          provider: "tavily",
+          reason: "xAI not configured, fallback to Tavily",
+          tavily_topic: "general",
+        };
       }
       return { provider: "xai", reason: "Social / X search uses xAI", sources: ["x"] };
     }
 
     if (mode === "docs" || mode === "github" || mode === "pdf") {
       if (this.firecrawl.isConfigured()) {
-        return { provider: "firecrawl", reason: "Docs/GitHub/PDF uses Firecrawl", firecrawl_categories: this.firecrawlCategories(mode, intent) };
+        return {
+          provider: "firecrawl",
+          reason: "Docs/GitHub/PDF uses Firecrawl",
+          firecrawl_categories: this.firecrawlCategories(mode, intent),
+        };
       }
-      if (this.exa.isConfigured()) return { provider: "exa", reason: "Firecrawl unavailable, docs fallback to Exa" };
+      if (this.exa.isConfigured())
+        return { provider: "exa", reason: "Firecrawl unavailable, docs fallback to Exa" };
     }
 
     if (includeContent) {
       if (this.firecrawl.isConfigured()) {
-        return { provider: "firecrawl", reason: "Content requested, Firecrawl preferred", firecrawl_categories: this.firecrawlCategories(mode, intent) };
+        return {
+          provider: "firecrawl",
+          reason: "Content requested, Firecrawl preferred",
+          firecrawl_categories: this.firecrawlCategories(mode, intent),
+        };
       }
-      if (this.exa.isConfigured()) return { provider: "exa", reason: "Firecrawl unavailable, content fallback to Exa" };
+      if (this.exa.isConfigured())
+        return { provider: "exa", reason: "Firecrawl unavailable, content fallback to Exa" };
     }
 
     if (intent === "news" || intent === "status" || mode === "news") {
-      if (this.tavily.isConfigured()) return { provider: "tavily", reason: "News/status uses Tavily", tavily_topic: "news" };
-      if (this.exa.isConfigured()) return { provider: "exa", reason: "Tavily unavailable, news fallback to Exa" };
+      if (this.tavily.isConfigured())
+        return { provider: "tavily", reason: "News/status uses Tavily", tavily_topic: "news" };
+      if (this.exa.isConfigured())
+        return { provider: "exa", reason: "Tavily unavailable, news fallback to Exa" };
     }
 
     if (intent === "resource") {
       if (this.firecrawl.isConfigured()) {
-        return { provider: "firecrawl", reason: "Resource query uses Firecrawl", firecrawl_categories: this.firecrawlCategories("docs", intent) };
+        return {
+          provider: "firecrawl",
+          reason: "Resource query uses Firecrawl",
+          firecrawl_categories: this.firecrawlCategories("docs", intent),
+        };
       }
-      if (this.exa.isConfigured()) return { provider: "exa", reason: "Firecrawl unavailable, resource fallback to Exa" };
+      if (this.exa.isConfigured())
+        return { provider: "exa", reason: "Firecrawl unavailable, resource fallback to Exa" };
     }
 
-    if (this.tavily.isConfigured()) return { provider: "tavily", reason: "Default web search uses Tavily", tavily_topic: "general" };
-    if (this.exa.isConfigured()) return { provider: "exa", reason: "Tavily unavailable, default fallback to Exa" };
-    if (this.firecrawl.isConfigured()) return { provider: "firecrawl", reason: "Default fallback to Firecrawl" };
+    if (this.tavily.isConfigured())
+      return {
+        provider: "tavily",
+        reason: "Default web search uses Tavily",
+        tavily_topic: "general",
+      };
+    if (this.exa.isConfigured())
+      return { provider: "exa", reason: "Tavily unavailable, default fallback to Exa" };
+    if (this.firecrawl.isConfigured())
+      return { provider: "firecrawl", reason: "Default fallback to Firecrawl" };
 
     throw new Error("No web search provider is configured");
   }
 
-  private resolveIntent(query: string, mode: SearchMode, intent: SearchIntent, sources: string[]): ResolvedSearchIntent {
+  private resolveIntent(
+    query: string,
+    mode: SearchMode,
+    intent: SearchIntent,
+    sources: string[],
+  ): ResolvedSearchIntent {
     if (intent !== "auto") return intent as ResolvedSearchIntent;
     const q = query.toLowerCase();
     if (mode === "news") return "news";
@@ -399,12 +457,58 @@ export class WebSearchRouter {
     if (sources.length === 1 && sources[0] === "x") return "status";
 
     const patterns: Array<[ResolvedSearchIntent, string[]]> = [
-      ["news", ["latest", "breaking", "news", "today", "this week", "刚刚", "最新", "新闻", "动态"]],
-      ["comparison", [" vs ", "versus", "compare", "comparison", "pros and cons", "对比", "比较", "区别", "哪个好"]],
+      [
+        "news",
+        ["latest", "breaking", "news", "today", "this week", "刚刚", "最新", "新闻", "动态"],
+      ],
+      [
+        "comparison",
+        [
+          " vs ",
+          "versus",
+          "compare",
+          "comparison",
+          "pros and cons",
+          "对比",
+          "比较",
+          "区别",
+          "哪个好",
+        ],
+      ],
       ["tutorial", ["how to", "guide", "tutorial", "walkthrough", "教程", "怎么", "如何", "入门"]],
-      ["resource", ["docs", "documentation", "api reference", "changelog", "pricing", "readme", "github", "文档", "接口"]],
-      ["status", ["status", "incident", "outage", "release", "roadmap", "version", "版本", "发布", "进展", "现状"]],
-      ["exploratory", ["why", "impact", "analysis", "trend", "ecosystem", "研究", "原因", "影响", "趋势", "生态"]],
+      [
+        "resource",
+        [
+          "docs",
+          "documentation",
+          "api reference",
+          "changelog",
+          "pricing",
+          "readme",
+          "github",
+          "文档",
+          "接口",
+        ],
+      ],
+      [
+        "status",
+        [
+          "status",
+          "incident",
+          "outage",
+          "release",
+          "roadmap",
+          "version",
+          "版本",
+          "发布",
+          "进展",
+          "现状",
+        ],
+      ],
+      [
+        "exploratory",
+        ["why", "impact", "analysis", "trend", "ecosystem", "研究", "原因", "影响", "趋势", "生态"],
+      ],
     ];
     for (const [resolvedIntent, keywords] of patterns) {
       if (keywords.some((kw) => q.includes(kw))) return resolvedIntent;
@@ -423,14 +527,23 @@ export class WebSearchRouter {
     if (sources.includes("web") && sources.includes("x")) return "balanced";
     if (mode === "research") return "deep";
     if (intent === "comparison" || intent === "exploratory") return "verify";
-    if (includeContent || mode === "docs" || mode === "github" || mode === "pdf" || intent === "resource" || intent === "tutorial") return "balanced";
+    if (
+      includeContent ||
+      mode === "docs" ||
+      mode === "github" ||
+      mode === "pdf" ||
+      intent === "resource" ||
+      intent === "tutorial"
+    )
+      return "balanced";
     return "fast";
   }
 
   private firecrawlCategories(mode: SearchMode, intent: ResolvedSearchIntent): string[] {
     if (mode === "github") return ["github"];
     if (mode === "pdf") return ["pdf"];
-    if (mode === "docs" || mode === "research" || intent === "resource" || intent === "tutorial") return ["research"];
+    if (mode === "docs" || mode === "research" || intent === "resource" || intent === "tutorial")
+      return ["research"];
     return [];
   }
 }
