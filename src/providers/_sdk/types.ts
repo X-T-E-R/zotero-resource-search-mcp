@@ -97,6 +97,14 @@ export interface ProviderConfigFieldSchema {
   type: "boolean" | "string" | "number";
   default?: boolean | string | number;
   enum?: string[];
+  label?: string;
+  labelZh?: string;
+  description?: string;
+  advanced?: boolean;
+  placeholder?: string;
+  secret?: boolean;
+  min?: number;
+  max?: number;
 }
 
 export interface LoadedProviderSource {

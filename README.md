@@ -20,13 +20,13 @@
 
 A **Zotero 7+** add-on that embeds a **Streamable HTTP MCP** server. AI clients get **8 tools** to search literature and the web, resolve identifiers, extract URLs, and write into your library — without shipping a fixed, closed list of databases.
 
-| Layer | What you get |
-|-------|----------------|
-| **Executor** | MCP server + tool handlers + Zotero integration (collections, PDFs, duplicates). |
+| Layer                        | What you get                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Executor**                 | MCP server + tool handlers + Zotero integration (collections, PDFs, duplicates).                                                                       |
 | **Default academic sources** | Shipped as pluggable packages (`manifest.json` + `provider.js`): arXiv, Crossref, PubMed, WoS, Semantic Scholar, Scopus, CQVIP, bioRxiv, medRxiv, etc. |
-| **Optional ZJU Summon** | Campus / **institutional IP** only — not a public API. Enable only on allowed networks. |
-| **Web search** | Router over Tavily / Firecrawl / Exa / xAI, or an optional [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) gateway. |
-| **Your sources** | Add or override packages: **Import .zip**, drop folders under the profile path, or use a **remote registry** URL in settings. |
+| **Optional ZJU Summon**      | Campus / **institutional IP** only — not a public API. Enable only on allowed networks.                                                                |
+| **Web search**               | Router over Tavily / Firecrawl / Exa / xAI, or an optional [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) gateway.                       |
+| **Your sources**             | Add or override packages: **Import .zip**, drop folders under the profile path, or use a **remote registry** URL in settings.                          |
 
 Design rationale: [docs/DESIGN.md](./docs/DESIGN.md). Authoring custom sources: [docs/development/provider-sdk.md](./docs/development/provider-sdk.md).
 
@@ -59,19 +59,19 @@ Zotero → `Edit` → `Settings` → **Resource Search MCP** → enable **MCP se
 }
 ```
 
-| Client | Where to put the config |
-|--------|-------------------------|
-| **Cursor** | `.cursor/mcp.json` or `~/.cursor/mcp.json` |
-| **Claude Desktop** | `claude_desktop_config.json` ([MCP docs](https://modelcontextprotocol.io/quickstart/user)) |
-| **Claude Code** | `claude mcp add --transport http zotero-resource-search http://127.0.0.1:23121/mcp` |
-| **Cherry Studio** | Settings → MCP → import JSON |
-| **Gemini CLI** | `~/.gemini/settings.json` |
-| **Chatbox** | MCP server settings |
-| **Trae AI** | Ctrl+U → AI Management → MCP |
-| **Cline (VS Code)** | MCP Servers → Advanced |
-| **Continue.dev** | `~/.continue/config.json` |
-| **Codex CLI** | `codex mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http` |
-| **Qwen Code** | `qwen mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http` |
+| Client              | Where to put the config                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| **Cursor**          | `.cursor/mcp.json` or `~/.cursor/mcp.json`                                                 |
+| **Claude Desktop**  | `claude_desktop_config.json` ([MCP docs](https://modelcontextprotocol.io/quickstart/user)) |
+| **Claude Code**     | `claude mcp add --transport http zotero-resource-search http://127.0.0.1:23121/mcp`        |
+| **Cherry Studio**   | Settings → MCP → import JSON                                                               |
+| **Gemini CLI**      | `~/.gemini/settings.json`                                                                  |
+| **Chatbox**         | MCP server settings                                                                        |
+| **Trae AI**         | Ctrl+U → AI Management → MCP                                                               |
+| **Cline (VS Code)** | MCP Servers → Advanced                                                                     |
+| **Continue.dev**    | `~/.continue/config.json`                                                                  |
+| **Codex CLI**       | `codex mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http`                  |
+| **Qwen Code**       | `qwen mcp add zotero-resource-search http://127.0.0.1:23121/mcp -t http`                   |
 
 ### 4. Agent Skill (recommended)
 
@@ -82,16 +82,16 @@ Zotero → `Edit` → `Settings` → **Resource Search MCP** → enable **MCP se
 
 ## The 8 tools
 
-| Tool | Purpose |
-|------|---------|
-| `academic_search` | Search registered academic providers |
-| `web_search` | Unified web search |
-| `web_research` | Multi-step research (search + scrape + optional social) |
-| `resource_lookup` | DOI / PMID / arXiv / ISBN or URL extract |
-| `resource_add` | Add items or URLs to the library |
-| `collection_list` | List collections |
-| `resource_pdf` | Fetch PDF for an item |
-| `platform_status` | Academic + web health |
+| Tool              | Purpose                                                 |
+| ----------------- | ------------------------------------------------------- |
+| `academic_search` | Search registered academic providers                    |
+| `web_search`      | Unified web search                                      |
+| `web_research`    | Multi-step research (search + scrape + optional social) |
+| `resource_lookup` | DOI / PMID / arXiv / ISBN or URL extract                |
+| `resource_add`    | Add items or URLs to the library                        |
+| `collection_list` | List collections                                        |
+| `resource_pdf`    | Fetch PDF for an item                                   |
+| `platform_status` | Academic + web health                                   |
 
 Full parameter reference: [`docs/skills/SKILL.md`](./docs/skills/SKILL.md).
 
@@ -105,6 +105,8 @@ Full parameter reference: [`docs/skills/SKILL.md`](./docs/skills/SKILL.md).
 - **Pluggable Search Providers** — list, import zip, reload, registry URL
 - **Agent Skills** — export / install `SKILL.md` for Cursor, Claude Code, Codex
 - **Infrastructure** — MCP port, log level
+
+The Sources tab now renders academic provider settings from each provider's `configSchema`, and surfaces loader / backend startup errors inline instead of silently showing an empty list.
 
 User provider directory: `<Zotero profile>/zotero-resource-search/providers/<id>/`.
 
@@ -150,13 +152,15 @@ addon/               # Manifest, prefs UI, locales, built providers
 
 ## Troubleshooting
 
-| Issue | Try |
-|-------|-----|
-| Cannot connect to MCP | Zotero running, server enabled, port matches config |
-| Tools missing in client | Restart the client after editing MCP config |
-| Academic source missing | `platform_status`; enable platform; add API key if required |
-| Web search empty | Configure at least one web key or MySearch Proxy |
-| Custom provider fails | Check debug log; validate manifest + `permissions.urls` |
+| Issue                   | Try                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| Cannot connect to MCP   | Zotero running, server enabled, port matches config                                                       |
+| Tools missing in client | Restart the client after editing MCP config                                                               |
+| Academic source missing | `platform_status`; check `registered` / `enabled` / `configured` / `error`, then try **Reload providers** |
+| Web search empty        | Configure at least one web key or MySearch Proxy                                                          |
+| Custom provider fails   | Check debug log; validate manifest + `permissions.urls`                                                   |
+
+`platform_status` now returns structured diagnostics for both academic providers and web backends, including whether each one is registered, enabled, configured, currently available, and the last startup/runtime error if known.
 
 ---
 

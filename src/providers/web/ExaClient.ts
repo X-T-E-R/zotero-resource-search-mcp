@@ -1,8 +1,21 @@
 import { HttpClient } from "../../infra/HttpClient";
 import { configProvider } from "../../infra/ConfigProvider";
 import type { WebSearchResponse } from "./types";
+import type { WebBackend, WebBackendCapability, WebBackendConfigField } from "./WebBackend";
 
-export class ExaClient {
+const EXA_CONFIG_SCHEMA: WebBackendConfigField[] = [
+  { key: "apiKey", label: "API Key", labelZh: "API 密钥", type: "password" },
+  { key: "baseUrl", label: "Base URL", labelZh: "基础地址", type: "text", advanced: true },
+  { key: "searchPath", label: "Search path", labelZh: "搜索路径", type: "text", advanced: true },
+];
+
+export class ExaClient implements WebBackend {
+  readonly id = "exa";
+  readonly name = "Exa";
+  readonly description = "Neural search";
+  readonly descriptionZh = "神经搜索";
+  readonly capabilities = new Set<WebBackendCapability>(["search"]);
+  readonly configSchema = EXA_CONFIG_SCHEMA;
   private getHttp(): HttpClient {
     const baseURL = configProvider.getString("web.exa.baseUrl", "https://api.exa.ai");
     const apiKey = configProvider.getString("web.exa.apiKey", "");
@@ -13,8 +26,16 @@ export class ExaClient {
     return new HttpClient({ baseURL, timeout: 45_000, headers });
   }
 
-  isConfigured(): boolean {
+  isEnabled(): boolean {
+    return configProvider.getBool("web.exa.enabled", true);
+  }
+
+  hasRequiredConfig(): boolean {
     return !!configProvider.getString("web.exa.apiKey", "");
+  }
+
+  isConfigured(): boolean {
+    return this.isEnabled() && this.hasRequiredConfig();
   }
 
   async search(opts: {

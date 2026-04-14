@@ -1,9 +1,45 @@
 import { HttpClient } from "../../infra/HttpClient";
 import { configProvider } from "../../infra/ConfigProvider";
-import { logger } from "../../infra/Logger";
 import type { WebSearchResponse, WebExtractResponse } from "./types";
+import type { WebBackend, WebBackendCapability, WebBackendConfigField } from "./WebBackend";
 
-export class TavilyClient {
+const TAVILY_CONFIG_SCHEMA: WebBackendConfigField[] = [
+  {
+    key: "apiKey",
+    label: "API Key",
+    labelZh: "API 密钥",
+    type: "password",
+    placeholder: "tvly-...",
+  },
+  {
+    key: "baseUrl",
+    label: "Base URL",
+    labelZh: "基础地址",
+    type: "text",
+    advanced: true,
+  },
+  {
+    key: "authMode",
+    label: "Auth mode",
+    labelZh: "认证方式",
+    type: "select",
+    advanced: true,
+    options: [
+      { value: "body", label: "Body (api_key)" },
+      { value: "bearer", label: "Bearer" },
+    ],
+  },
+  { key: "searchPath", label: "Search path", labelZh: "搜索路径", type: "text", advanced: true },
+  { key: "extractPath", label: "Extract path", labelZh: "提取路径", type: "text", advanced: true },
+];
+
+export class TavilyClient implements WebBackend {
+  readonly id = "tavily";
+  readonly name = "Tavily";
+  readonly description = "AI web search and page extraction";
+  readonly descriptionZh = "AI 网页搜索与页面提取";
+  readonly capabilities = new Set<WebBackendCapability>(["search", "extract"]);
+  readonly configSchema = TAVILY_CONFIG_SCHEMA;
   private getHttp(): HttpClient {
     const baseURL = configProvider.getString("web.tavily.baseUrl", "https://api.tavily.com");
     const apiKey = configProvider.getString("web.tavily.apiKey", "");
@@ -17,8 +53,16 @@ export class TavilyClient {
     return new HttpClient({ baseURL, timeout: 45_000, headers });
   }
 
-  isConfigured(): boolean {
+  isEnabled(): boolean {
+    return configProvider.getBool("web.tavily.enabled", true);
+  }
+
+  hasRequiredConfig(): boolean {
     return !!configProvider.getString("web.tavily.apiKey", "");
+  }
+
+  isConfigured(): boolean {
+    return this.isEnabled() && this.hasRequiredConfig();
   }
 
   async search(opts: {

@@ -4,6 +4,10 @@
   "version": "__buildVersion__",
   "description": "__description__",
   "author": "__author__",
+  "icons": {
+    "48": "content/icons/icon48.png",
+    "96": "content/icons/icon96.png"
+  },
   "applications": {
     "zotero": {
       "id": "__addonID__",

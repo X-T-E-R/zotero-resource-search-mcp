@@ -16,7 +16,7 @@ function getOS(): {
 }
 
 type IOUtilsType = {
-  mkdir: (path: string, opts?: { create?: boolean }) => Promise<void>;
+  mkdir: (path: string, opts?: { create?: boolean; recursive?: boolean }) => Promise<void>;
   read: (path: string) => Promise<Uint8Array>;
   write: (path: string, data: Uint8Array) => Promise<void>;
   remove: (path: string, opts?: { recursive?: boolean }) => Promise<void>;
@@ -34,9 +34,31 @@ export function getUserProvidersRoot(): string {
   return OS.Path.join(profD.path, "zotero-resource-search", "providers");
 }
 
+function ensureDirectoryNsIFile(path: string): void {
+  const FileUtils = getChromeUtils().importESModule("resource://gre/modules/FileUtils.sys.mjs") as {
+    File: new (path: string) => nsIFile;
+  };
+  const dir = new FileUtils.File(path);
+  if (dir.exists()) {
+    if (!dir.isDirectory()) {
+      throw new Error(`Path exists but is not a directory: ${path}`);
+    }
+    return;
+  }
+  const parent = dir.parent;
+  if (parent && !parent.exists()) {
+    ensureDirectoryNsIFile(parent.path);
+  }
+  dir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+}
+
 export async function ensureDirectory(path: string): Promise<void> {
   const IOUtils = getIOUtils();
-  await IOUtils.mkdir(path, { create: true });
+  try {
+    await IOUtils.mkdir(path, { create: true, recursive: true });
+  } catch {
+    ensureDirectoryNsIFile(path);
+  }
 }
 
 export function joinPaths(...parts: string[]): string {

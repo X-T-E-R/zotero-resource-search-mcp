@@ -1,3 +1,13 @@
+pref-tab-general = General
+pref-tab-sources = Sources
+pref-tab-manage = Manage
+
+pref-header-title = Zotero Resource Search MCP
+pref-header-homepage = GitHub
+pref-sources-intro = Enable academic sources and web backends here. Shared API keys are below. Install extra provider packages on the Manage tab.
+pref-sources-ext-note = More sources: import a .zip or use the registry on the Manage tab. User packages live under profile/zotero-resource-search/providers/.
+pref-logging-title = Logging
+
 pref-general-title = General Settings
 pref-general-fetchpdf =
     .label = Fetch PDF by default when adding items

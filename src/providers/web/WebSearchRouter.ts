@@ -1,10 +1,12 @@
 import { configProvider } from "../../infra/ConfigProvider";
 import { logger } from "../../infra/Logger";
-import { TavilyClient } from "./TavilyClient";
-import { FirecrawlClient } from "./FirecrawlClient";
-import { ExaClient } from "./ExaClient";
-import { XAIClient } from "./XAIClient";
-import { MySearchProxyClient } from "./MySearchProxyClient";
+import { webBackendRegistry } from "./WebBackendRegistry";
+import type { WebBackend } from "./WebBackend";
+import type { TavilyClient } from "./TavilyClient";
+import type { FirecrawlClient } from "./FirecrawlClient";
+import type { ExaClient } from "./ExaClient";
+import type { XAIClient } from "./XAIClient";
+import type { MySearchProxyClient } from "./MySearchProxyClient";
 import type {
   RouteDecision,
   SearchMode,
@@ -18,11 +20,44 @@ import type {
 } from "./types";
 
 export class WebSearchRouter {
-  private tavily = new TavilyClient();
-  private firecrawl = new FirecrawlClient();
-  private exa = new ExaClient();
-  private xai = new XAIClient();
-  private mySearchProxy = new MySearchProxyClient();
+  private getOptionalBackend<T extends WebBackend>(id: string): T | undefined {
+    const backend = webBackendRegistry.get(id);
+    return backend ? (backend as T) : undefined;
+  }
+
+  private isBackendConfigured(id: string): boolean {
+    return this.getOptionalBackend<WebBackend>(id)?.isConfigured() ?? false;
+  }
+
+  private get tavily(): TavilyClient {
+    const b = webBackendRegistry.get("tavily");
+    if (!b) throw new Error("Tavily backend not registered");
+    return b as TavilyClient;
+  }
+
+  private get firecrawl(): FirecrawlClient {
+    const b = webBackendRegistry.get("firecrawl");
+    if (!b) throw new Error("Firecrawl backend not registered");
+    return b as FirecrawlClient;
+  }
+
+  private get exa(): ExaClient {
+    const b = webBackendRegistry.get("exa");
+    if (!b) throw new Error("Exa backend not registered");
+    return b as ExaClient;
+  }
+
+  private get xai(): XAIClient {
+    const b = webBackendRegistry.get("xai");
+    if (!b) throw new Error("xAI backend not registered");
+    return b as XAIClient;
+  }
+
+  private get mySearchProxy(): MySearchProxyClient {
+    const b = webBackendRegistry.get("mysearch");
+    if (!b) throw new Error("MySearch Proxy backend not registered");
+    return b as MySearchProxyClient;
+  }
 
   async search(opts: {
     query: string;
@@ -42,9 +77,10 @@ export class WebSearchRouter {
     toDate?: string;
   }): Promise<WebSearchResponse> {
     const proxyFirst = configProvider.getBool("web.mysearch.proxyFirst", false);
-    if (proxyFirst && this.mySearchProxy.isConfigured()) {
+    const mySearchProxy = this.getOptionalBackend<MySearchProxyClient>("mysearch");
+    if (proxyFirst && mySearchProxy?.isConfigured()) {
       try {
-        return await this.mySearchProxy.search(opts);
+        return await mySearchProxy.search(opts);
       } catch (e) {
         logger.warn(`MySearch Proxy failed, falling back to direct: ${e}`);
       }
@@ -137,9 +173,10 @@ export class WebSearchRouter {
     provider?: string;
   }): Promise<WebExtractResponse> {
     const proxyFirst = configProvider.getBool("web.mysearch.proxyFirst", false);
-    if (proxyFirst && this.mySearchProxy.isConfigured()) {
+    const mySearchProxy = this.getOptionalBackend<MySearchProxyClient>("mysearch");
+    if (proxyFirst && mySearchProxy?.isConfigured()) {
       try {
-        return await this.mySearchProxy.extractUrl(opts);
+        return await mySearchProxy.extractUrl(opts);
       } catch (e) {
         logger.warn(`MySearch Proxy extract failed, falling back: ${e}`);
       }
@@ -149,9 +186,10 @@ export class WebSearchRouter {
     const errors: string[] = [];
 
     if (provider === "auto" || provider === "firecrawl") {
-      if (this.firecrawl.isConfigured()) {
+      const firecrawl = this.getOptionalBackend<FirecrawlClient>("firecrawl");
+      if (firecrawl?.isConfigured()) {
         try {
-          const result = await this.firecrawl.scrape({
+          const result = await firecrawl.scrape({
             url: opts.url,
             formats: opts.formats,
             onlyMainContent: opts.onlyMainContent,
@@ -170,9 +208,10 @@ export class WebSearchRouter {
     }
 
     if (provider === "auto" || provider === "tavily") {
-      if (this.tavily.isConfigured()) {
+      const tavily = this.getOptionalBackend<TavilyClient>("tavily");
+      if (tavily?.isConfigured()) {
         try {
-          const result = await this.tavily.extract(opts.url);
+          const result = await tavily.extract(opts.url);
           if (errors.length) {
             result.fallback = { from: "firecrawl", reason: errors.join(" | ") };
           }
@@ -204,9 +243,10 @@ export class WebSearchRouter {
     toDate?: string;
   }): Promise<WebResearchResponse> {
     const proxyFirst = configProvider.getBool("web.mysearch.proxyFirst", false);
-    if (proxyFirst && this.mySearchProxy.isConfigured()) {
+    const mySearchProxy = this.getOptionalBackend<MySearchProxyClient>("mysearch");
+    if (proxyFirst && mySearchProxy?.isConfigured()) {
       try {
-        return await this.mySearchProxy.research(opts);
+        return await mySearchProxy.research(opts);
       } catch (e) {
         logger.warn(`MySearch Proxy research failed, falling back: ${e}`);
       }
@@ -230,7 +270,7 @@ export class WebSearchRouter {
 
     let socialSearch: WebSearchResponse | null = null;
     let socialError = "";
-    if (includeSocial && this.xai.isConfigured()) {
+    if (includeSocial && this.isBackendConfigured("xai")) {
       try {
         socialSearch = await this.xai.search({
           query: opts.query,
@@ -304,34 +344,39 @@ export class WebSearchRouter {
   }
 
   getHealth(): WebProviderHealth[] {
+    const tavily = this.getOptionalBackend<TavilyClient>("tavily");
+    const firecrawl = this.getOptionalBackend<FirecrawlClient>("firecrawl");
+    const exa = this.getOptionalBackend<ExaClient>("exa");
+    const xai = this.getOptionalBackend<XAIClient>("xai");
+    const mySearchProxy = this.getOptionalBackend<MySearchProxyClient>("mysearch");
     const providers: WebProviderHealth[] = [
       {
         name: "tavily",
-        configured: this.tavily.isConfigured(),
+        configured: tavily?.isConfigured() ?? false,
         base_url: configProvider.getString("web.tavily.baseUrl", "https://api.tavily.com"),
         auth_mode: configProvider.getString("web.tavily.authMode", "body"),
       },
       {
         name: "firecrawl",
-        configured: this.firecrawl.isConfigured(),
+        configured: firecrawl?.isConfigured() ?? false,
         base_url: configProvider.getString("web.firecrawl.baseUrl", "https://api.firecrawl.dev"),
         auth_mode: "bearer",
       },
       {
         name: "exa",
-        configured: this.exa.isConfigured(),
+        configured: exa?.isConfigured() ?? false,
         base_url: configProvider.getString("web.exa.baseUrl", "https://api.exa.ai"),
         auth_mode: "bearer",
       },
       {
         name: "xai",
-        configured: this.xai.isConfigured(),
+        configured: xai?.isConfigured() ?? false,
         base_url: configProvider.getString("web.xai.baseUrl", "https://api.x.ai/v1"),
         auth_mode: "bearer",
       },
       {
         name: "mysearch_proxy",
-        configured: this.mySearchProxy.isConfigured(),
+        configured: mySearchProxy?.isConfigured() ?? false,
         base_url: configProvider.getString("web.mysearch.baseUrl", ""),
         auth_mode: "bearer",
       },
@@ -340,13 +385,7 @@ export class WebSearchRouter {
   }
 
   hasAnyProvider(): boolean {
-    return (
-      this.tavily.isConfigured() ||
-      this.firecrawl.isConfigured() ||
-      this.exa.isConfigured() ||
-      this.xai.isConfigured() ||
-      this.mySearchProxy.isConfigured()
-    );
+    return webBackendRegistry.hasAny();
   }
 
   private routeSearch(
@@ -376,7 +415,7 @@ export class WebSearchRouter {
     }
 
     if (mode === "social" || sources.includes("x")) {
-      if (!this.xai.isConfigured() && this.tavily.isConfigured()) {
+      if (!this.isBackendConfigured("xai") && this.isBackendConfigured("tavily")) {
         return {
           provider: "tavily",
           reason: "xAI not configured, fallback to Tavily",
@@ -387,57 +426,57 @@ export class WebSearchRouter {
     }
 
     if (mode === "docs" || mode === "github" || mode === "pdf") {
-      if (this.firecrawl.isConfigured()) {
+      if (this.isBackendConfigured("firecrawl")) {
         return {
           provider: "firecrawl",
           reason: "Docs/GitHub/PDF uses Firecrawl",
           firecrawl_categories: this.firecrawlCategories(mode, intent),
         };
       }
-      if (this.exa.isConfigured())
+      if (this.isBackendConfigured("exa"))
         return { provider: "exa", reason: "Firecrawl unavailable, docs fallback to Exa" };
     }
 
     if (includeContent) {
-      if (this.firecrawl.isConfigured()) {
+      if (this.isBackendConfigured("firecrawl")) {
         return {
           provider: "firecrawl",
           reason: "Content requested, Firecrawl preferred",
           firecrawl_categories: this.firecrawlCategories(mode, intent),
         };
       }
-      if (this.exa.isConfigured())
+      if (this.isBackendConfigured("exa"))
         return { provider: "exa", reason: "Firecrawl unavailable, content fallback to Exa" };
     }
 
     if (intent === "news" || intent === "status" || mode === "news") {
-      if (this.tavily.isConfigured())
+      if (this.isBackendConfigured("tavily"))
         return { provider: "tavily", reason: "News/status uses Tavily", tavily_topic: "news" };
-      if (this.exa.isConfigured())
+      if (this.isBackendConfigured("exa"))
         return { provider: "exa", reason: "Tavily unavailable, news fallback to Exa" };
     }
 
     if (intent === "resource") {
-      if (this.firecrawl.isConfigured()) {
+      if (this.isBackendConfigured("firecrawl")) {
         return {
           provider: "firecrawl",
           reason: "Resource query uses Firecrawl",
           firecrawl_categories: this.firecrawlCategories("docs", intent),
         };
       }
-      if (this.exa.isConfigured())
+      if (this.isBackendConfigured("exa"))
         return { provider: "exa", reason: "Firecrawl unavailable, resource fallback to Exa" };
     }
 
-    if (this.tavily.isConfigured())
+    if (this.isBackendConfigured("tavily"))
       return {
         provider: "tavily",
         reason: "Default web search uses Tavily",
         tavily_topic: "general",
       };
-    if (this.exa.isConfigured())
+    if (this.isBackendConfigured("exa"))
       return { provider: "exa", reason: "Tavily unavailable, default fallback to Exa" };
-    if (this.firecrawl.isConfigured())
+    if (this.isBackendConfigured("firecrawl"))
       return { provider: "firecrawl", reason: "Default fallback to Firecrawl" };
 
     throw new Error("No web search provider is configured");

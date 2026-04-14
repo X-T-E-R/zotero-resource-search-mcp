@@ -1,6 +1,7 @@
 import { config } from "../../package.json";
 import { setupProviderPrefsUI } from "../modules/providerPrefsUI";
 import { setupSkillPrefsUI } from "../modules/skillPrefsUI";
+import { setupPrefsSourcesUI } from "../modules/prefsSourcesUI";
 
 type PluginPrefsMap = _ZoteroTypes.Prefs["PluginPrefsMap"];
 
@@ -31,6 +32,12 @@ export async function registerPrefsScripts(_window: Window) {
     setupProviderPrefsUI(_window);
   } catch (e) {
     ztoolkit.log(`Provider prefs UI failed: ${e}`, "warn");
+  }
+
+  try {
+    setupPrefsSourcesUI(_window);
+  } catch (e) {
+    ztoolkit.log(`Sources prefs UI failed: ${e}`, "warn");
   }
 
   try {

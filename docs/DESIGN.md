@@ -47,6 +47,8 @@ flowchart LR
 2. **Bundle** (`provider.js`) — must export a factory `createProvider(api)` returning `{ search(query, options) }`.
 3. **API** (`ProviderAPI`) — injected `http`, `xml`, `dom`, `config`, `log`, `rateLimit`, and optional global prefs per manifest.
 
+`configSchema` doubles as UI metadata for the Sources tab. Besides the value type, providers may expose labels, descriptions, advanced-only fields, enum-backed selects, placeholders, numeric bounds, and secret/password inputs.
+
 Loading order:
 
 1. Built-in list from `addon/providers/index.json`.
@@ -55,21 +57,31 @@ Loading order:
 
 Remote **registry** JSON (`{ "providers": [{ "id", "version", "downloadUrl", "sha256?" }] }`) downloads zips and verifies SHA-256 when provided.
 
+Startup is deliberately fail-soft:
+
+- Missing user provider directories are created recursively when possible.
+- A failure in one builtin/user provider does not prevent the remaining academic providers or web backends from registering.
+- Loader status is captured as structured startup entries and reused by the settings UI and `platform_status`.
+
 ## MCP tool surface
 
 Eight tools keep the model’s decision space small:
 
-| Tool | Role |
-|------|------|
-| `academic_search` | Route to registered academic `SearchProvider`s |
-| `web_search` / `web_research` | Web router |
-| `resource_lookup` | Translators + URL extract |
-| `resource_add` / `collection_list` / `resource_pdf` | Zotero integration |
-| `platform_status` | Health by source kind |
+| Tool                                                | Role                                           |
+| --------------------------------------------------- | ---------------------------------------------- |
+| `academic_search`                                   | Route to registered academic `SearchProvider`s |
+| `web_search` / `web_research`                       | Web router                                     |
+| `resource_lookup`                                   | Translators + URL extract                      |
+| `resource_add` / `collection_list` / `resource_pdf` | Zotero integration                             |
+| `platform_status`                                   | Health by source kind                          |
+
+`mcp/status.availableTools` and `tools/list` are generated from the same canonical tool catalog to avoid drift.
 
 ## Web routing
 
 Intent/strategy routing follows patterns from **MySearch-Proxy** (upstream credit in README). Provider keys and base URLs live in Zotero prefs.
+
+Web backend health is queried via registry-safe checks so diagnostics still work even if an individual backend fails to register.
 
 ## Security notes
 
@@ -79,5 +91,6 @@ Intent/strategy routing follows patterns from **MySearch-Proxy** (upstream credi
 ## Related docs
 
 - [Provider SDK](development/provider-sdk.md)
+- [Runtime gotchas](development/runtime-gotchas.md)
 - [Agent Skill](skills/SKILL.md)
 - [Versioning](development/versioning.md)

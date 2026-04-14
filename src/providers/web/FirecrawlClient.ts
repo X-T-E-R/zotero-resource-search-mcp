@@ -1,8 +1,22 @@
 import { HttpClient } from "../../infra/HttpClient";
 import { configProvider } from "../../infra/ConfigProvider";
 import type { WebSearchResponse, WebExtractResponse } from "./types";
+import type { WebBackend, WebBackendCapability, WebBackendConfigField } from "./WebBackend";
 
-export class FirecrawlClient {
+const FIRECRAWL_CONFIG_SCHEMA: WebBackendConfigField[] = [
+  { key: "apiKey", label: "API Key", labelZh: "API 密钥", type: "password", placeholder: "fc-..." },
+  { key: "baseUrl", label: "Base URL", labelZh: "基础地址", type: "text", advanced: true },
+  { key: "searchPath", label: "Search path", labelZh: "搜索路径", type: "text", advanced: true },
+  { key: "scrapePath", label: "Scrape path", labelZh: "抓取路径", type: "text", advanced: true },
+];
+
+export class FirecrawlClient implements WebBackend {
+  readonly id = "firecrawl";
+  readonly name = "Firecrawl";
+  readonly description = "Web search and page scraping";
+  readonly descriptionZh = "网页搜索与页面抓取";
+  readonly capabilities = new Set<WebBackendCapability>(["search", "extract"]);
+  readonly configSchema = FIRECRAWL_CONFIG_SCHEMA;
   private getHttp(): HttpClient {
     const baseURL = configProvider.getString("web.firecrawl.baseUrl", "https://api.firecrawl.dev");
     const apiKey = configProvider.getString("web.firecrawl.apiKey", "");
@@ -13,8 +27,16 @@ export class FirecrawlClient {
     return new HttpClient({ baseURL, timeout: 45_000, headers });
   }
 
-  isConfigured(): boolean {
+  isEnabled(): boolean {
+    return configProvider.getBool("web.firecrawl.enabled", true);
+  }
+
+  hasRequiredConfig(): boolean {
     return !!configProvider.getString("web.firecrawl.apiKey", "");
+  }
+
+  isConfigured(): boolean {
+    return this.isEnabled() && this.hasRequiredConfig();
   }
 
   async search(opts: {

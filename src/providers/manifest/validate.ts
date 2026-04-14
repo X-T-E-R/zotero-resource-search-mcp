@@ -35,6 +35,38 @@ function validateConfigSchema(
         throw new ManifestValidationError(`configSchema.${key}.enum must be string[]`);
       }
     }
+    if ("label" in def && def.label !== undefined && typeof def.label !== "string") {
+      throw new ManifestValidationError(`configSchema.${key}.label must be a string`);
+    }
+    if ("labelZh" in def && def.labelZh !== undefined && typeof def.labelZh !== "string") {
+      throw new ManifestValidationError(`configSchema.${key}.labelZh must be a string`);
+    }
+    if (
+      "description" in def &&
+      def.description !== undefined &&
+      typeof def.description !== "string"
+    ) {
+      throw new ManifestValidationError(`configSchema.${key}.description must be a string`);
+    }
+    if ("advanced" in def && def.advanced !== undefined && typeof def.advanced !== "boolean") {
+      throw new ManifestValidationError(`configSchema.${key}.advanced must be boolean`);
+    }
+    if (
+      "placeholder" in def &&
+      def.placeholder !== undefined &&
+      typeof def.placeholder !== "string"
+    ) {
+      throw new ManifestValidationError(`configSchema.${key}.placeholder must be a string`);
+    }
+    if ("secret" in def && def.secret !== undefined && typeof def.secret !== "boolean") {
+      throw new ManifestValidationError(`configSchema.${key}.secret must be boolean`);
+    }
+    if ("min" in def && def.min !== undefined && typeof def.min !== "number") {
+      throw new ManifestValidationError(`configSchema.${key}.min must be a number`);
+    }
+    if ("max" in def && def.max !== undefined && typeof def.max !== "number") {
+      throw new ManifestValidationError(`configSchema.${key}.max must be a number`);
+    }
   }
 }
 

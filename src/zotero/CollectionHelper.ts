@@ -8,6 +8,14 @@ export interface CollectionNode {
   children: CollectionNode[];
 }
 
+export function normalizeCollectionParentID(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
+}
+
+export function normalizeCollectionParentKey(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 export class CollectionHelper {
   listTree(): CollectionNode[] {
     const libraryID = Zotero.Libraries.userLibraryID;
@@ -15,7 +23,7 @@ export class CollectionHelper {
     const byParent = new Map<number | null, any[]>();
 
     for (const col of allCollections) {
-      const pid = (col as any).parentID ?? null;
+      const pid = normalizeCollectionParentID((col as any).parentID);
       if (!byParent.has(pid)) byParent.set(pid, []);
       byParent.get(pid)!.push(col);
     }
@@ -25,7 +33,7 @@ export class CollectionHelper {
       return children.map((col: any) => ({
         key: col.key as string,
         name: col.name as string,
-        parentKey: col.parentKey ?? null,
+        parentKey: normalizeCollectionParentKey(col.parentKey),
         itemCount: col.getChildItems(false)?.length ?? 0,
         children: buildTree(col.id),
       }));
@@ -63,7 +71,7 @@ export class CollectionHelper {
       const match = allCollections.find(
         (c: any) =>
           c.name.toLowerCase() === part.toLowerCase() &&
-          ((c as any).parentID ?? null) === currentParentID,
+          normalizeCollectionParentID((c as any).parentID) === currentParentID,
       );
       if (!match) {
         logger.warn(
@@ -71,7 +79,7 @@ export class CollectionHelper {
         );
         return null;
       }
-      currentParentID = (match as any).id;
+      currentParentID = normalizeCollectionParentID((match as any).id);
     }
 
     if (currentParentID === null) return null;
