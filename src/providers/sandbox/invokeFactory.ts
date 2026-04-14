@@ -1,10 +1,10 @@
 import type { PluggableProviderImpl, ProviderAPI } from "../_sdk/types";
 import type { ProviderManifest } from "../_sdk/types";
-import type { SearchOptions, SearchResult } from "../../models/types";
+import type { PatentDetailResult, SearchOptions, SearchResult } from "../../models/types";
 
-function sanitizeSearchResult(result: SearchResult): SearchResult {
+function sanitizeResult<T>(result: T): T {
   try {
-    return JSON.parse(JSON.stringify(result)) as SearchResult;
+    return JSON.parse(JSON.stringify(result)) as T;
   } catch {
     return result;
   }
@@ -154,7 +154,17 @@ export function invokeProviderFactory(
   return {
     async search(query: string, options?: SearchOptions): Promise<SearchResult> {
       const raw = await impl.search(query, options);
-      return sanitizeSearchResult(raw);
+      return sanitizeResult(raw);
+    },
+    async getDetail(
+      sourceId: string,
+      options?: Record<string, unknown>,
+    ): Promise<PatentDetailResult> {
+      if (typeof impl.getDetail !== "function") {
+        throw new Error(`Provider ${manifest.id} does not implement getDetail()`);
+      }
+      const raw = await impl.getDetail(sourceId, options);
+      return sanitizeResult(raw) as PatentDetailResult;
     },
   };
 }

@@ -4,6 +4,7 @@
 
 import { getPref } from "../utils/prefs";
 import { installProviderFromZipFile } from "./providerInstaller";
+import { expandRegistryUrlCandidates } from "./providerRegistryUrl";
 import {
   getUserProvidersRoot,
   joinPaths,
@@ -27,15 +28,22 @@ export interface RemoteRegistryManifest {
 }
 
 export async function fetchRegistry(url: string): Promise<RemoteRegistryManifest> {
-  const r = await fetch(url, { cache: "no-store" });
-  if (!r.ok) {
-    throw new Error(`Registry HTTP ${r.status}`);
+  const candidates = expandRegistryUrlCandidates(url);
+  const errors: string[] = [];
+  for (const candidate of candidates) {
+    const r = await fetch(candidate, { cache: "no-store" });
+    if (!r.ok) {
+      errors.push(`${candidate} -> HTTP ${r.status}`);
+      continue;
+    }
+    const data = (await r.json()) as unknown as RemoteRegistryManifest;
+    if (!data || !Array.isArray(data.providers)) {
+      errors.push(`${candidate} -> invalid registry JSON`);
+      continue;
+    }
+    return data;
   }
-  const data = (await r.json()) as unknown as RemoteRegistryManifest;
-  if (!data || !Array.isArray(data.providers)) {
-    throw new Error("Invalid registry JSON");
-  }
-  return data;
+  throw new Error(errors.length ? errors.join(" | ") : "Invalid registry URL");
 }
 
 export async function installRegistryEntry(entry: RemoteRegistryEntry): Promise<void> {

@@ -28,10 +28,42 @@ export interface ResourceItem {
   rights?: string;
   extra?: string;
   tags?: Tag[];
+  country?: string;
+  assignee?: string;
+  issuingAuthority?: string;
+  patentNumber?: string;
+  applicationNumber?: string;
+  priorityNumbers?: string;
+  filingDate?: string;
+  issueDate?: string;
+  legalStatus?: string;
+  references?: string;
+  sourceId?: string;
 
   source?: string;
   relevanceScore?: number;
   citationCount?: number;
+}
+
+export interface PatentDetailSection<T = unknown> {
+  available: boolean;
+  data?: T;
+  text?: string;
+  urls?: string[];
+  entries?: Array<{ date?: string; status?: string; info?: string; code?: string }>;
+}
+
+export interface PatentDetailResult {
+  item: ResourceItem;
+  detail: {
+    legalStatus?: PatentDetailSection<
+      Array<{ date?: string; status?: string; info?: string; code?: string }>
+    >;
+    claims?: PatentDetailSection<string>;
+    description?: PatentDetailSection<string>;
+    pdf?: PatentDetailSection<string[]>;
+    images?: PatentDetailSection<string[]>;
+  };
 }
 
 export interface SearchOptions {
@@ -62,6 +94,7 @@ export interface SearchProvider {
   readonly sourceType: SourceType;
   isAvailable(): boolean;
   search(query: string, options?: SearchOptions): Promise<SearchResult>;
+  getDetail?(sourceId: string, options?: Record<string, any>): Promise<PatentDetailResult>;
 }
 
 export interface MetadataResolver {

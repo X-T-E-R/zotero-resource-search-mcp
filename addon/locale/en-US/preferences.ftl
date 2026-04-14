@@ -4,8 +4,8 @@ pref-tab-manage = Manage
 
 pref-header-title = Zotero Resource Search MCP
 pref-header-homepage = GitHub
-pref-sources-intro = Enable academic sources and web backends here. Shared API keys are below. Install extra provider packages on the Manage tab.
-pref-sources-ext-note = More sources: import a .zip or use the registry on the Manage tab. User packages live under profile/zotero-resource-search/providers/.
+pref-sources-intro = Configure academic provider packages and web backends here. Shared API keys are below. Install sources from the Manage tab.
+pref-sources-ext-note = More sources: import a .zip or use a provider repository on the Manage tab. User packages live under profile/zotero-resource-search/providers/.
 pref-logging-title = Logging
 
 pref-general-title = General Settings
@@ -60,14 +60,14 @@ pref-advanced-settings = Advanced Settings
 pref-extra-apikeys-title = Other API Keys (Reserved)
 
 pref-providers-title = Pluggable Search Providers
-pref-providers-desc = Built-in sources ship with the plugin; user-installed sources override same id. User folder: profile/zotero-resource-search/providers/
+pref-providers-desc = The plugin no longer ships academic sources. Add provider packages from a repository URL or import .zip files. User folder: profile/zotero-resource-search/providers/
 pref-providers-refresh =
     .label = Refresh list
 pref-providers-import =
     .label = Import .zip…
 pref-providers-reload =
     .label = Reload providers
-pref-providers-registry-url = Registry URL:
+pref-providers-registry-url = Provider Repo URL:
 pref-providers-registry-check =
     .label = Check registry
 

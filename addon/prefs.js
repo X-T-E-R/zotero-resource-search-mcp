@@ -18,58 +18,6 @@ pref("api.crossref.mailto", "");
 pref("api.semanticScholar.key", "");
 pref("api.elsevier.key", "");
 
-// ── Academic Platform: arXiv ──
-pref("platform.arxiv.enabled", true);
-pref("platform.arxiv.defaultSort", "");
-pref("platform.arxiv.maxResults", 0);
-pref("platform.arxiv.sortOrder", "descending");
-
-// ── Academic Platform: Crossref ──
-pref("platform.crossref.enabled", true);
-pref("platform.crossref.defaultSort", "");
-pref("platform.crossref.maxResults", 0);
-
-// ── Academic Platform: PubMed ──
-pref("platform.pubmed.enabled", true);
-pref("platform.pubmed.defaultSort", "");
-pref("platform.pubmed.maxResults", 0);
-
-// ── Academic Platform: Web of Science ──
-pref("platform.wos.enabled", true);
-pref("platform.wos.defaultSort", "citations");
-pref("platform.wos.maxResults", 0);
-pref("platform.wos.database", "WOS");
-
-// ── Academic Platform: ZJU Summon ──
-pref("platform.zjusummon.enabled", true);
-pref("platform.zjusummon.defaultSort", "");
-pref("platform.zjusummon.maxResults", 0);
-
-// ── Academic Platform: CQVIP ──
-pref("platform.cqvip.enabled", true);
-pref("platform.cqvip.defaultSort", "");
-pref("platform.cqvip.maxResults", 0);
-
-// ── Academic Platform: Semantic Scholar ──
-pref("platform.semantic.enabled", true);
-pref("platform.semantic.defaultSort", "");
-pref("platform.semantic.maxResults", 0);
-
-// ── Academic Platform: Scopus ──
-pref("platform.scopus.enabled", false);
-pref("platform.scopus.defaultSort", "");
-pref("platform.scopus.maxResults", 0);
-
-// ── Academic Platform: bioRxiv ──
-pref("platform.biorxiv.enabled", true);
-pref("platform.biorxiv.defaultSort", "");
-pref("platform.biorxiv.maxResults", 0);
-
-// ── Academic Platform: medRxiv ──
-pref("platform.medrxiv.enabled", true);
-pref("platform.medrxiv.defaultSort", "");
-pref("platform.medrxiv.maxResults", 0);
-
 // ── Web Search: MySearch Proxy ──
 pref("web.mysearch.enabled", true);
 pref("web.mysearch.baseUrl", "");

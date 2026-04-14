@@ -1,5 +1,5 @@
 import { configProvider } from "../../infra/ConfigProvider";
-import type { SearchProvider, SearchOptions, SearchResult } from "../../models/types";
+import type { PatentDetailResult, SearchProvider, SearchOptions, SearchResult } from "../../models/types";
 import type { LoadedProviderSource, PluggableProviderImpl, ProviderManifest } from "../_sdk/types";
 
 export interface ProviderAvailabilityCheck {
@@ -33,7 +33,7 @@ export class PluggableSearchProvider implements SearchProvider {
     available: boolean;
     reason?: string;
   } {
-    const defaultOn = this.id === "scopus" ? false : true;
+    const defaultOn = true;
     const enabled = configProvider.getBool(`platform.${this.id}.enabled`, defaultOn);
     const configured = this.extraAvailability ? this.extraAvailability.check() : true;
     return {
@@ -55,5 +55,15 @@ export class PluggableSearchProvider implements SearchProvider {
     } finally {
       clearTimeout(timer!);
     }
+  }
+
+  async getDetail(
+    sourceId: string,
+    options?: Record<string, unknown>,
+  ): Promise<PatentDetailResult> {
+    if (typeof this.impl.getDetail !== "function") {
+      throw new Error(`Provider ${this.id} does not support getDetail()`);
+    }
+    return this.impl.getDetail(sourceId, options);
   }
 }

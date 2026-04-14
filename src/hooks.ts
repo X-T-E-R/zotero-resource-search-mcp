@@ -5,6 +5,45 @@ import { registerPrefsScripts } from "./utils/prefs";
 import { createZToolkit } from "./utils/ztoolkit";
 import { config } from "../package.json";
 import { initProviders } from "./providers/init";
+import { getProviderStartupReport } from "./providers/loader";
+import { getPref } from "./utils/prefs";
+import { getAcademicSourceGuidance } from "./providers/academicSourceGuidance";
+
+let missingAcademicSourceReminderShown = false;
+
+function getStartupLang(): "zh" | "en" {
+  try {
+    return String((Zotero as any).locale || "")
+      .toLowerCase()
+      .startsWith("zh")
+      ? "zh"
+      : "en";
+  } catch {
+    return "en";
+  }
+}
+
+function maybeRemindMissingAcademicSources(): void {
+  if (missingAcademicSourceReminderShown) {
+    return;
+  }
+  const guidance = getAcademicSourceGuidance({
+    locale: getStartupLang(),
+    academicProviderCount: getProviderStartupReport().academic.length,
+    registryUrl: getPref("providers.registryUrl"),
+  });
+  if (!guidance.needsAttention) {
+    return;
+  }
+  const win = Zotero.getMainWindows?.()[0] as Window | undefined;
+  if (!win || typeof win.alert !== "function") {
+    return;
+  }
+  missingAcademicSourceReminderShown = true;
+  win.setTimeout(() => {
+    win.alert([guidance.title, ...guidance.details].join("\n"));
+  }, 300);
+}
 
 async function onStartup() {
   await Promise.all([Zotero.initializationPromise, Zotero.unlockPromise, Zotero.uiReadyPromise]);
@@ -101,6 +140,7 @@ async function onStartup() {
   });
 
   await Promise.all(Zotero.getMainWindows().map((win) => onMainWindowLoad(win)));
+  maybeRemindMissingAcademicSources();
 
   addon.data.initialized = true;
 }

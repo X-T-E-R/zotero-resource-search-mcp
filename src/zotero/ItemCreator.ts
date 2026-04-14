@@ -1,5 +1,6 @@
 import type { ResourceItem } from "../models/types";
 import { logger } from "../infra/Logger";
+import { getPatentFieldMap } from "./patentItemMapping";
 
 export class ItemCreator {
   async createFromResourceItem(
@@ -9,28 +10,44 @@ export class ItemCreator {
   ): Promise<{ key: string; title: string }> {
     const item = new Zotero.Item((resource.itemType || "journalArticle") as any);
 
-    item.setField("title", resource.title);
-    if (resource.date) item.setField("date", resource.date);
-    if (resource.DOI) item.setField("DOI", resource.DOI);
-    if (resource.url) item.setField("url", resource.url);
-    if (resource.abstractNote) item.setField("abstractNote", resource.abstractNote);
-    if (resource.publicationTitle) item.setField("publicationTitle", resource.publicationTitle);
-    if (resource.volume) item.setField("volume", resource.volume);
-    if (resource.issue) item.setField("issue", resource.issue);
-    if (resource.pages) item.setField("pages", resource.pages);
-    if (resource.ISSN) item.setField("ISSN", resource.ISSN);
-    if (resource.ISBN) item.setField("ISBN", resource.ISBN);
-    if (resource.language) item.setField("language", resource.language);
-    if (resource.extra) item.setField("extra", resource.extra);
+    if (resource.itemType === "patent") {
+      const patentMap = getPatentFieldMap(resource);
+      for (const [field, value] of Object.entries(patentMap.fields)) {
+        item.setField(field as any, value);
+      }
+      if (patentMap.creators?.length) {
+        item.setCreators(
+          patentMap.creators.map((c) => ({
+            firstName: c.firstName || "",
+            lastName: c.lastName,
+            creatorType: c.creatorType || "inventor",
+          })) as any,
+        );
+      }
+    } else {
+      item.setField("title", resource.title);
+      if (resource.date) item.setField("date", resource.date);
+      if (resource.DOI) item.setField("DOI", resource.DOI);
+      if (resource.url) item.setField("url", resource.url);
+      if (resource.abstractNote) item.setField("abstractNote", resource.abstractNote);
+      if (resource.publicationTitle) item.setField("publicationTitle", resource.publicationTitle);
+      if (resource.volume) item.setField("volume", resource.volume);
+      if (resource.issue) item.setField("issue", resource.issue);
+      if (resource.pages) item.setField("pages", resource.pages);
+      if (resource.ISSN) item.setField("ISSN", resource.ISSN);
+      if (resource.ISBN) item.setField("ISBN", resource.ISBN);
+      if (resource.language) item.setField("language", resource.language);
+      if (resource.extra) item.setField("extra", resource.extra);
 
-    if (resource.creators?.length) {
-      item.setCreators(
-        resource.creators.map((c) => ({
-          firstName: c.firstName || "",
-          lastName: c.lastName,
-          creatorType: c.creatorType || "author",
-        })) as any,
-      );
+      if (resource.creators?.length) {
+        item.setCreators(
+          resource.creators.map((c) => ({
+            firstName: c.firstName || "",
+            lastName: c.lastName,
+            creatorType: c.creatorType || "author",
+          })) as any,
+        );
+      }
     }
 
     const tagSet = new Set<string>();

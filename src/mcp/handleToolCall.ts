@@ -1,7 +1,9 @@
 import { searchAction } from "../actions/SearchAction";
 import { lookupAction } from "../actions/LookupAction";
 import { addAction } from "../actions/AddAction";
+import { patentDetailAction } from "../actions/PatentDetailAction";
 import { configProvider } from "../infra/ConfigProvider";
+import { secretStore } from "../infra/SecretStore";
 import { getProviderStartupReport } from "../providers/loader";
 import { collectionHelper } from "../zotero/CollectionHelper";
 import { pdfFetcher } from "../zotero/PdfFetcher";
@@ -14,6 +16,10 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
   switch (name) {
     case "academic_search":
       return handleAcademicSearch(args);
+    case "patent_search":
+      return handlePatentSearch(args);
+    case "patent_detail":
+      return handlePatentDetail(args);
     case "web_search":
       return handleWebSearch(args);
     case "web_research":
@@ -73,6 +79,61 @@ async function handleAcademicSearch(args: any): Promise<any> {
     error: result.error,
     items: result.items,
   };
+}
+
+async function handlePatentSearch(args: any): Promise<any> {
+  const { query, platform, maxResults, page, sortBy, extra } = args;
+
+  if (!query || typeof query !== "string") {
+    return { error: "query is required and must be a string" };
+  }
+
+  const options: any = { maxResults, page: page ?? 1, sortBy, extra };
+  const result = await searchAction.executeBySourceType(query, "patent", platform ?? "all", options);
+
+  if (Array.isArray(result)) {
+    const totalItems = result.reduce((sum, r) => sum + r.items.length, 0);
+    return {
+      query,
+      platformsSearched: result.map((r) => r.platform),
+      totalItems,
+      results: result.map((r) => ({
+        platform: r.platform,
+        totalResults: r.totalResults,
+        itemCount: r.items.length,
+        elapsed: r.elapsed,
+        error: r.error,
+        items: r.items,
+      })),
+    };
+  }
+
+  return {
+    query,
+    platform: result.platform,
+    totalResults: result.totalResults,
+    itemCount: result.items.length,
+    elapsed: result.elapsed,
+    error: result.error,
+    items: result.items,
+  };
+}
+
+async function handlePatentDetail(args: any): Promise<any> {
+  const { platform, sourceId, include } = args;
+
+  if (!platform || typeof platform !== "string") {
+    return { error: "platform is required and must be a string" };
+  }
+  if (!sourceId || typeof sourceId !== "string") {
+    return { error: "sourceId is required and must be a string" };
+  }
+
+  try {
+    return await patentDetailAction.execute(platform, sourceId, { include });
+  } catch (e) {
+    return { error: String(e) };
+  }
 }
 
 async function handleWebSearch(args: any): Promise<any> {
@@ -218,6 +279,19 @@ async function handlePlatformStatus(): Promise<any> {
     available: entry.available,
     error: entry.error,
   }));
+  const patent = report.patent.map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    sourceType: entry.sourceType,
+    kind: entry.kind,
+    version: entry.version,
+    source: entry.source,
+    registered: entry.registered,
+    enabled: entry.enabled,
+    configured: entry.configured,
+    available: entry.available,
+    error: entry.error,
+  }));
 
   const webProviders = report.web.map((entry) => ({
     name: entry.id === "mysearch" ? "mysearch_proxy" : entry.id,
@@ -238,11 +312,18 @@ async function handlePlatformStatus(): Promise<any> {
 
   return {
     issues: report.issues,
+    secretStorage: secretStore.describe(),
     academic: {
       totalPlatforms: academic.length,
       registeredCount: academic.filter((p) => p.registered).length,
       availableCount: academic.filter((p) => p.available).length,
       platforms: academic,
+    },
+    patent: {
+      totalPlatforms: patent.length,
+      registeredCount: patent.filter((p) => p.registered).length,
+      availableCount: patent.filter((p) => p.available).length,
+      platforms: patent,
     },
     web: {
       totalProviders: webProviders.length,

@@ -38,7 +38,7 @@ description: Search academic and web resources, resolve DOI/PMID/ISBN, extract U
 
 | Tool | Role |
 |------|------|
-| \`academic_search\` | Search pluggable academic sources (built-in + user packages) |
+| \`academic_search\` | Search pluggable academic sources (installed provider packages) |
 | \`web_search\` | Unified web search (Tavily/Firecrawl/Exa/xAI or MySearch Proxy) |
 | \`web_research\` | Multi-step research (search + scrape + optional social) |
 | \`resource_lookup\` | Identifier lookup or URL content extract |

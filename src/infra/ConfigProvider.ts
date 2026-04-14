@@ -1,3 +1,5 @@
+import { secretStore } from "./SecretStore";
+
 const PREFS_PREFIX = "extensions.zotero.zotero-resource-search";
 
 function prefKey(key: string): string {
@@ -14,6 +16,9 @@ export const configProvider = {
   },
 
   getString(key: string, defaultValue: string = ""): string {
+    if (secretStore.isSecretKey(key)) {
+      return secretStore.getString(key, defaultValue);
+    }
     const val = this.get(key);
     if (typeof val === "string") return val;
     return defaultValue;

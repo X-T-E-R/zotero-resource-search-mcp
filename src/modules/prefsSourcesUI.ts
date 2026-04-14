@@ -7,11 +7,13 @@ import { getProviderStartupReport } from "../providers/loader";
 import { PluggableSearchProvider } from "../providers/pluggable/PluggableSearchProvider";
 import { webBackendRegistry } from "../providers/web/WebBackendRegistry";
 import type { WebBackend, WebBackendConfigField } from "../providers/web/WebBackend";
+import { secretStore } from "../infra/SecretStore";
 import {
   createAcademicConfigSchema,
   normalizeProviderConfigFields,
   type NormalizedProviderConfigField,
 } from "./providerConfigSchema";
+import { getAcademicSourceGuidance } from "../providers/academicSourceGuidance";
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
 
@@ -106,6 +108,10 @@ function renderAcademicField(
   label.textContent = lang === "zh" && field.labelZh ? field.labelZh : field.label;
 
   const fullKey = prefKey(`platform.${providerId}.${field.key}`);
+  const logicalKey = `platform.${providerId}.${field.key}`;
+  if (field.secret) {
+    secretStore.registerSecretKey(logicalKey);
+  }
 
   if (field.control === "checkbox") {
     const checkbox = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
@@ -154,9 +160,15 @@ function renderAcademicField(
       });
     } else {
       const fallback = typeof field.default === "string" ? field.default : "";
-      input.value = prefStr(`platform.${providerId}.${field.key}`, fallback);
+      input.value = field.secret
+        ? secretStore.getString(logicalKey, fallback)
+        : prefStr(`platform.${providerId}.${field.key}`, fallback);
       input.addEventListener("change", () => {
-        Zotero.Prefs.set(fullKey, input.value, true);
+        if (field.secret) {
+          secretStore.setString(logicalKey, input.value);
+        } else {
+          Zotero.Prefs.set(fullKey, input.value, true);
+        }
       });
     }
     row.appendChild(label);
@@ -228,14 +240,7 @@ function renderAcademicCard(
 
   const meta = doc.createElementNS(HTML_NS, "div") as HTMLElement;
   meta.setAttribute("style", "font-size:0.82em;color:#666;margin-top:2px");
-  meta.textContent =
-    provider.source.kind === "user"
-      ? lang === "zh"
-        ? "用户 Provider"
-        : "User provider"
-      : lang === "zh"
-        ? "内建 Provider"
-        : "Built-in provider";
+  meta.textContent = lang === "zh" ? "已安装 Provider" : "Installed provider";
   left.appendChild(meta);
 
   if (!runtimeStatus.configured && runtimeStatus.reason) {
@@ -262,8 +267,7 @@ function renderAcademicCard(
     toggle.setAttribute("type", "checkbox");
     toggle.checked = prefBool(
       `platform.${provider.id}.enabled`,
-      enabledField.default === true ||
-        (provider.id !== "scopus" && enabledField.default === undefined),
+      enabledField.default === true || enabledField.default === undefined,
     );
     toggle.addEventListener("change", () => {
       Zotero.Prefs.set(prefKey(`platform.${provider.id}.enabled`), toggle.checked, true);
@@ -346,6 +350,10 @@ function appendWebField(
   lab.setAttribute("style", "min-width:100px;font-size:0.88em");
   lab.textContent = lang === "zh" && field.labelZh ? field.labelZh : field.label;
   const full = fieldFullPref(backend, field);
+  const logicalKey = field.fullPrefKey || `web.${backend.id}.${field.key}`;
+  if (field.type === "password") {
+    secretStore.registerSecretKey(logicalKey);
+  }
 
   if (field.type === "checkbox") {
     const cb = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
@@ -387,13 +395,35 @@ function appendWebField(
   if (field.placeholder) {
     input.setAttribute("placeholder", field.placeholder);
   }
-  input.value = readStrFull(full, "");
+  input.value = field.type === "password" ? secretStore.getString(logicalKey, "") : readStrFull(full, "");
   input.addEventListener("change", () => {
-    Zotero.Prefs.set(full, input.value, true);
+    if (field.type === "password") {
+      secretStore.setString(logicalKey, input.value);
+    } else {
+      Zotero.Prefs.set(full, input.value, true);
+    }
   });
   row.appendChild(lab);
   row.appendChild(input);
   parent.appendChild(row);
+}
+
+function setupStaticSecretInputs(doc: Document): void {
+  const inputs = [...doc.querySelectorAll("input[preference]")] as HTMLInputElement[];
+  for (const input of inputs) {
+    const preference = input.getAttribute("preference");
+    if (!preference || !preference.startsWith(`${config.prefsPrefix}.`)) continue;
+    const logicalKey = preference.slice(config.prefsPrefix.length + 1);
+    if (!secretStore.isSecretKey(logicalKey)) continue;
+
+    secretStore.registerSecretKey(logicalKey);
+    input.removeAttribute("preference");
+    input.setAttribute("type", "password");
+    input.value = secretStore.getString(logicalKey, "");
+    input.addEventListener("change", () => {
+      secretStore.setString(logicalKey, input.value);
+    });
+  }
 }
 
 function renderWebBackendCard(doc: Document, backend: WebBackend, lang: "zh" | "en"): HTMLElement {
@@ -524,6 +554,12 @@ export function setupPrefsSourcesUI(win: Window): void {
 
   const lang = getLang();
   const report = getProviderStartupReport();
+  setupStaticSecretInputs(doc);
+  const guidance = getAcademicSourceGuidance({
+    locale: lang,
+    academicProviderCount: report.academic.length,
+    registryUrl: prefStr("providers.registryUrl", ""),
+  });
   const academicProviders = providerRegistry
     .getAll()
     .filter(
@@ -538,6 +574,24 @@ export function setupPrefsSourcesUI(win: Window): void {
       if (statusA.enabled !== statusB.enabled) return statusA.enabled ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
+  const patentProviders = providerRegistry
+    .getAll()
+    .filter(
+      (provider): provider is PluggableSearchProvider =>
+        provider instanceof PluggableSearchProvider,
+    )
+    .filter((provider) => provider.sourceType === "patent")
+    .sort((a, b) => {
+      const statusA = a.getRuntimeStatus();
+      const statusB = b.getRuntimeStatus();
+      if (statusA.available !== statusB.available) return statusA.available ? -1 : 1;
+      if (statusA.enabled !== statusB.enabled) return statusA.enabled ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  if (guidance.needsAttention) {
+    container.appendChild(renderIssueList(doc, guidance.title, guidance.details, "info"));
+  }
 
   container.appendChild(
     createBlock(
@@ -552,8 +606,8 @@ export function setupPrefsSourcesUI(win: Window): void {
       doc,
       "p",
       lang === "zh"
-        ? "内置与可安装的清单包（manifest + provider.js）。用户目录可覆盖同名源。"
-        : "Built-in and installable packages (manifest + provider.js). User folder overrides same id.",
+        ? "学术源通过外部 provider 包提供。可在 Manage 页配置源仓库 URL、检查仓库更新，或直接导入 zip。"
+        : "Academic sources come from external provider packages. Use the Manage tab to set a provider repository URL, check the registry, or import a zip.",
       "color:#666;font-size:0.85em;margin:0 0 8px 0",
     ),
   );
@@ -562,8 +616,8 @@ export function setupPrefsSourcesUI(win: Window): void {
       doc,
       "p",
       lang === "zh"
-        ? `当前可用 ${report.academic.filter((entry) => entry.available).length} / ${report.academic.length} 个学术源。卡片默认折叠，按需展开配置。`
-        : `${report.academic.filter((entry) => entry.available).length} / ${report.academic.length} academic providers are ready. Cards are collapsed by default to save space.`,
+        ? `当前已加载 ${report.academic.length} 个学术源，其中 ${report.academic.filter((entry) => entry.available).length} 个可直接使用。卡片默认折叠，按需展开配置。`
+        : `${report.academic.length} academic providers are loaded, and ${report.academic.filter((entry) => entry.available).length} are ready. Cards are collapsed by default to save space.`,
       "color:#4b5563;font-size:0.82em;margin:0 0 10px 0",
     ),
   );
@@ -587,18 +641,79 @@ export function setupPrefsSourcesUI(win: Window): void {
       renderIssueList(
         doc,
         lang === "zh"
-          ? "当前没有已加载的学术 Provider"
-          : "No academic providers are currently loaded",
+          ? "当前没有已加载的学术源"
+          : "No academic sources are currently loaded",
         [
           lang === "zh"
-            ? "请查看上方错误信息，并在 Manage 页尝试 Reload providers。"
-            : "Review the errors above and try Reload providers on the Manage tab.",
+            ? "请到 Manage 页填写源仓库 URL 后点击“检查仓库更新”，或直接导入 provider zip。"
+            : 'Open the Manage tab, set a provider repository URL, then click "Check registry" or import a provider zip.',
         ],
         "info",
       ),
     );
   } else {
     for (const provider of academicProviders) {
+      container.appendChild(renderAcademicCard(doc, provider, lang));
+    }
+  }
+
+  container.appendChild(
+    createBlock(
+      doc,
+      "h3",
+      lang === "zh" ? "专利搜索源" : "Patent sources",
+      "margin:16px 0 6px 0;font-size:1.05em",
+    ),
+  );
+  container.appendChild(
+    createBlock(
+      doc,
+      "p",
+      lang === "zh"
+        ? "专利源同样通过外部 provider 包提供；返回的结果会标准化为可直接写入 Zotero patent 的条目。"
+        : "Patent sources also come from external provider packages and return normalized items that can be written into Zotero patent entries.",
+      "color:#666;font-size:0.85em;margin:0 0 8px 0",
+    ),
+  );
+  container.appendChild(
+    createBlock(
+      doc,
+      "p",
+      lang === "zh"
+        ? `当前已加载 ${report.patent.length} 个专利源，其中 ${report.patent.filter((entry) => entry.available).length} 个可直接使用。`
+        : `${report.patent.length} patent providers are loaded, and ${report.patent.filter((entry) => entry.available).length} are ready.`,
+      "color:#4b5563;font-size:0.82em;margin:0 0 10px 0",
+    ),
+  );
+
+  const patentIssues = report.patent
+    .filter((entry) => entry.error)
+    .map((entry) => `${entry.id}: ${entry.error}`);
+  if (patentIssues.length) {
+    container.appendChild(
+      renderIssueList(
+        doc,
+        lang === "zh" ? "Patent provider 启动/加载异常" : "Patent provider startup / load issues",
+        patentIssues,
+      ),
+    );
+  }
+
+  if (patentProviders.length === 0) {
+    container.appendChild(
+      renderIssueList(
+        doc,
+        lang === "zh" ? "当前没有已加载的专利源" : "No patent sources are currently loaded",
+        [
+          lang === "zh"
+            ? "请到 Manage 页填写源仓库 URL 后点击“检查仓库更新”，或直接导入 provider zip。"
+            : 'Open the Manage tab, set a provider repository URL, then click "Check registry" or import a provider zip.',
+        ],
+        "info",
+      ),
+    );
+  } else {
+    for (const provider of patentProviders) {
       container.appendChild(renderAcademicCard(doc, provider, lang));
     }
   }

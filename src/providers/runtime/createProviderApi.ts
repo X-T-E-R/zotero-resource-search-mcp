@@ -3,6 +3,7 @@ import { XmlParser } from "../../infra/XmlParser";
 import { configProvider } from "../../infra/ConfigProvider";
 import { logger } from "../../infra/Logger";
 import { RateLimiter } from "../../infra/RateLimiter";
+import { secretStore } from "../../infra/SecretStore";
 import type { ProviderAPI } from "../_sdk/types";
 import type { ProviderManifest } from "../_sdk/types";
 import { assertUrlAllowed } from "./urlPermissions";
@@ -19,6 +20,14 @@ export function createProviderApi(manifest: ProviderManifest, providerId: string
   const rateLimiter = new RateLimiter(ratePerMin);
 
   const prefix = `platform.${providerId}.`;
+  const secretConfigKeys = new Set(
+    Object.entries(manifest.configSchema ?? {})
+      .filter(([, field]) => field.secret)
+      .map(([key]) => key),
+  );
+  for (const key of secretConfigKeys) {
+    secretStore.registerSecretKey(prefix + key);
+  }
 
   const http: ProviderAPI["http"] = {
     async get(url, options) {
@@ -44,7 +53,10 @@ export function createProviderApi(manifest: ProviderManifest, providerId: string
   };
 
   const config: ProviderAPI["config"] = {
-    getString: (key, def) => configProvider.getString(prefix + key, def ?? ""),
+    getString: (key, def) =>
+      secretConfigKeys.has(key)
+        ? secretStore.getString(prefix + key, def ?? "")
+        : configProvider.getString(prefix + key, def ?? ""),
     getNumber: (key, def) => configProvider.getNumber(prefix + key, def ?? 0),
     getBool: (key, def) => configProvider.getBool(prefix + key, def ?? false),
   };

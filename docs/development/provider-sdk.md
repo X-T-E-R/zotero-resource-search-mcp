@@ -8,13 +8,13 @@ This plugin treats **academic search** as a set of **packages**. Each package is
   provider.js      # bundled JS: export function createProvider(api) { ... }
 ```
 
-Built-in sources live in the repo under [`src/providers/packages/`](../../src/providers/packages/) and are compiled into `addon/providers/<id>/` for the XPI.
+Academic provider source has been split into the external repository [`resource-search-providers`](https://github.com/X-T-E-R/resource-search-providers). The plugin now loads only user-installed / externally installed packages.
 
 ## Why write a provider?
 
 - Index a **private API** or **internal catalog**.
 - Ship a **team- or org-specific** source without forking the whole plugin.
-- **Override** behavior for a built-in `id` by installing a user package with the same `id`.
+- Reuse the same `id` to upgrade an already installed provider package in place.
 
 ## manifest.json
 
@@ -98,7 +98,7 @@ The plugin still injects common academic fields (`enabled`, `defaultSort`, `maxR
 
 Return [`SearchResult`](../../src/models/types.ts) with `items: ResourceItem[]`, `platform`, `query`, etc.
 
-Authoring in TypeScript: put logic in `index.ts`, build to `provider.js` via your bundler (the project build already emits built-in packages).
+Authoring in TypeScript: put logic in `index.ts`, build to `provider.js` via your bundler, then publish the zip and `registry.json` as GitHub Release assets from the external provider repository.
 
 ## Install a user package
 
@@ -112,7 +112,7 @@ Authoring in TypeScript: put logic in `index.ts`, build to `provider.js` via you
 
 ## Remote registry
 
-Set **Registry URL** to HTTPS JSON:
+Set **Provider Repo URL** to a GitHub repository URL or a direct HTTPS `registry.json` URL:
 
 ```json
 {
@@ -129,6 +129,8 @@ Set **Registry URL** to HTTPS JSON:
 ```
 
 Use **Check registry** to download and install (SHA-256 verified when provided).
+
+When you paste a GitHub repository URL, the plugin first tries the mutable release asset `providers-registry-latest/registry.json`, then falls back to `releases/latest/download/registry.json`, and finally raw branch URLs for compatibility.
 
 ## Debugging
 

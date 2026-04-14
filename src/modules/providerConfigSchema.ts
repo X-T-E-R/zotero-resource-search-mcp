@@ -13,29 +13,38 @@ export interface NormalizedProviderConfigField extends ProviderConfigFieldSchema
   options?: { value: string; label: string }[];
 }
 
-const DEFAULT_ACADEMIC_FIELDS: Record<string, ProviderConfigFieldSchema> = {
-  enabled: {
-    type: "boolean",
-    default: true,
-    label: "Enabled",
-    labelZh: "启用",
-  },
-  defaultSort: {
-    type: "string",
-    default: "",
-    enum: ["", "relevance", "date", "citations"],
-    label: "Default Sort",
-    labelZh: "默认排序",
-  },
-  maxResults: {
-    type: "number",
-    default: 0,
-    min: 0,
-    max: 100,
-    label: "Max Results",
-    labelZh: "结果数",
-  },
-};
+function createDefaultSearchFields(
+  sourceType: ProviderManifest["sourceType"] = "academic",
+): Record<string, ProviderConfigFieldSchema> {
+  const defaultSortEnum =
+    sourceType === "patent"
+      ? ["", "relevance", "date"]
+      : ["", "relevance", "date", "citations"];
+
+  return {
+    enabled: {
+      type: "boolean",
+      default: true,
+      label: "Enabled",
+      labelZh: "启用",
+    },
+    defaultSort: {
+      type: "string",
+      default: "",
+      enum: defaultSortEnum,
+      label: "Default Sort",
+      labelZh: "默认排序",
+    },
+    maxResults: {
+      type: "number",
+      default: 0,
+      min: 0,
+      max: 100,
+      label: "Max Results",
+      labelZh: "结果数",
+    },
+  };
+}
 
 export function prettifyConfigKey(key: string): string {
   const label = key
@@ -83,10 +92,10 @@ export function normalizeProviderConfigFields(
 }
 
 export function createAcademicConfigSchema(
-  manifest: Pick<ProviderManifest, "configSchema">,
+  manifest: Pick<ProviderManifest, "configSchema" | "sourceType">,
 ): Record<string, ProviderConfigFieldSchema> {
   return {
-    ...DEFAULT_ACADEMIC_FIELDS,
+    ...createDefaultSearchFields(manifest.sourceType ?? "academic"),
     ...(manifest.configSchema ?? {}),
   };
 }

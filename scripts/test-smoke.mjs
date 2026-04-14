@@ -49,9 +49,12 @@ async function main() {
     fs.existsSync(path.join(root, "addon", "providers", "index.json")),
     "Generated addon/providers/index.json is missing",
   );
+  const providerIndex = JSON.parse(
+    fs.readFileSync(path.join(root, "addon", "providers", "index.json"), "utf8"),
+  );
   assert(
-    fs.existsSync(path.join(root, "addon", "providers", "arxiv", "provider.js")),
-    "Generated builtin arXiv provider bundle is missing",
+    Array.isArray(providerIndex.providers) && providerIndex.providers.length === 0,
+    "Built-in academic providers should no longer be bundled into addon/providers",
   );
 
   const toolCatalog = await loadTsModule("src/mcp/toolCatalog.ts");
@@ -61,8 +64,10 @@ async function main() {
 
   const toolNames = toolCatalog.getCanonicalToolNames();
   assert(Array.isArray(toolNames), "getCanonicalToolNames() must return an array");
-  assert(toolNames.length === 8, `Expected 8 canonical tools, got ${toolNames.length}`);
+  assert(toolNames.length === 10, `Expected 10 canonical tools, got ${toolNames.length}`);
   assert(toolNames.includes("academic_search"), "Canonical tools must include academic_search");
+  assert(toolNames.includes("patent_search"), "Canonical tools must include patent_search");
+  assert(toolNames.includes("patent_detail"), "Canonical tools must include patent_detail");
   assert(toolNames.includes("platform_status"), "Canonical tools must include platform_status");
 
   const status = statusCatalog.createStatusSnapshot({
@@ -108,6 +113,22 @@ async function main() {
   assert(
     providerConfig.prettifyConfigKey("maxResults") === "Max Results",
     "prettifyConfigKey should humanize camelCase labels",
+  );
+  const academicSchema = providerConfig.createAcademicConfigSchema({
+    sourceType: "academic",
+    configSchema: {},
+  });
+  const patentSchema = providerConfig.createAcademicConfigSchema({
+    sourceType: "patent",
+    configSchema: {},
+  });
+  assert(
+    academicSchema.defaultSort.enum.includes("citations"),
+    "Academic default sort options should still include citations",
+  );
+  assert(
+    !patentSchema.defaultSort.enum.includes("citations"),
+    "Patent default sort options should not include citations",
   );
 
   assert(

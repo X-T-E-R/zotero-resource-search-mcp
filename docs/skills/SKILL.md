@@ -1,6 +1,6 @@
 # Zotero Resource Search MCP
 
-> **Extensibility:** Academic `platform` IDs come from **loaded provider packages** (built-in + user-installed). The list below matches the default bundle; custom zips or registry installs can add new IDs. See [Provider SDK](../development/provider-sdk.md).
+> **Extensibility:** Academic `platform` IDs come from currently loaded provider packages. Install them from a provider repository or custom zip packages. See [Provider SDK](../development/provider-sdk.md).
 
 Use this skill when the user asks to search for academic papers, web resources, look up papers by DOI/PMID/arXiv ID/ISBN, extract URL content, add items to their Zotero library, list Zotero collections, fetch PDFs, or perform web research. This skill operates via a local MCP server running inside the Zotero plugin.
 
@@ -33,7 +33,7 @@ Before any tool call, send an `initialize` request once per session:
 {"jsonrpc":"2.0","id":<N>,"method":"tools/call","params":{"name":"<tool_name>","arguments":{...}}}
 ```
 
-## Available Tools (8 total)
+## Available Tools (10 total)
 
 ### 1. `academic_search` — Search academic resources
 
@@ -62,7 +62,30 @@ Search across multiple academic platforms. Returns structured metadata for `reso
 }
 ```
 
-### 2. `web_search` — Unified web search
+### 2. `patent_search` — Search patent resources
+
+Search across patent providers currently loaded into the plugin.
+
+| Param        | Type   | Required | Description                                                  |
+| ------------ | ------ | -------- | ------------------------------------------------------------ |
+| `query`      | string | YES      | Patent search query                                          |
+| `platform`   | string | no       | `"all"` (default) or a specific patent provider such as `patentstar` |
+| `maxResults` | number | no       | Max results (default: 25)                                    |
+| `page`       | number | no       | Page number (default: 1)                                     |
+| `sortBy`     | string | no       | `"relevance"` or `"date"`                                    |
+| `extra`      | object | no       | Provider-specific extra parameters                           |
+
+### 3. `patent_detail` — Fetch patent detail blocks
+
+Fetch normalized patent detail by provider-native source id.
+
+| Param      | Type     | Required | Description                                                      |
+| ---------- | -------- | -------- | ---------------------------------------------------------------- |
+| `platform` | string   | YES      | Patent provider id                                               |
+| `sourceId` | string   | YES      | Provider-native patent id                                        |
+| `include`  | string[] | no       | Any of `core`, `legalStatus`, `claims`, `description`, `pdf`, `images` |
+
+### 4. `web_search` — Unified web search
 
 Auto-routes to Tavily/Firecrawl/Exa/xAI based on query intent. Requires at least one web provider API key configured.
 
@@ -89,7 +112,7 @@ Auto-routes to Tavily/Firecrawl/Exa/xAI based on query intent. Requires at least
 }
 ```
 
-### 3. `web_research` — Multi-step research workflow
+### 5. `web_research` — Multi-step research workflow
 
 Web search + top-N page scraping + optional X/social search. Returns comprehensive evidence.
 
@@ -109,7 +132,7 @@ Web search + top-N page scraping + optional X/social search. Returns comprehensi
 }
 ```
 
-### 4. `resource_lookup` — Look up by identifier or extract URL
+### 6. `resource_lookup` — Look up by identifier or extract URL
 
 Returns full metadata for an identifier, or extracts content from a URL.
 
@@ -134,7 +157,7 @@ Returns full metadata for an identifier, or extracts content from a URL.
 }
 ```
 
-### 5. `resource_add` — Add to Zotero library
+### 7. `resource_add` — Add to Zotero library
 
 | Param            | Type     | Required | Description                            |
 | ---------------- | -------- | -------- | -------------------------------------- |
@@ -156,21 +179,21 @@ Duplicate behavior:
 {"name":"resource_add","arguments":{"item":{...},"collectionPath":"毕设/参考文献","fetchPDF":true}}
 ```
 
-### 6. `collection_list` — List Zotero collections
+### 8. `collection_list` — List Zotero collections
 
 | Param  | Type    | Required | Description                          |
 | ------ | ------- | -------- | ------------------------------------ |
 | `flat` | boolean | no       | Flat list with paths (default: tree) |
 
-### 7. `resource_pdf` — Fetch PDF for existing item
+### 9. `resource_pdf` — Fetch PDF for existing item
 
 | Param     | Type   | Required | Description     |
 | --------- | ------ | -------- | --------------- |
 | `itemKey` | string | YES      | Zotero item key |
 
-### 8. `platform_status` — Check all platforms
+### 10. `platform_status` — Check all platforms
 
-No parameters. Returns status grouped by type (academic, web).
+No parameters. Returns status grouped by type (academic, patent, web), plus secret storage info.
 
 ## Typical Workflows
 

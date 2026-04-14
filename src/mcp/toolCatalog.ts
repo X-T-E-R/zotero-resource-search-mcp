@@ -45,6 +45,63 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
     },
   },
   {
+    name: "patent_search",
+    description:
+      "Search patent resources across registered patent platforms. Returns structured patent items that can be added to Zotero.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Patent search query string" },
+        platform: {
+          type: "string",
+          description:
+            'Patent platform to search. Use "all" for federated search across all available patent platforms.',
+          enum: [],
+        },
+        maxResults: { type: "number", description: "Maximum results per platform (default: 25)" },
+        page: { type: "number", description: "Page number (default: 1)" },
+        sortBy: {
+          type: "string",
+          enum: ["relevance", "date"],
+          description: "Patent search sort criteria",
+        },
+        extra: {
+          type: "object",
+          description: "Patent-provider-specific extra parameters.",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "patent_detail",
+    description:
+      "Fetch detailed patent data by provider-native patent id. Returns a normalized patent item plus structured detail blocks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        platform: {
+          type: "string",
+          description: "Patent platform id",
+          enum: [],
+        },
+        sourceId: {
+          type: "string",
+          description: "Provider-native patent id, such as PatentStar ANE",
+        },
+        include: {
+          type: "array",
+          items: {
+            type: "string",
+            enum: ["core", "legalStatus", "claims", "description", "pdf", "images"],
+          },
+          description: "Detail sections to include",
+        },
+      },
+      required: ["platform", "sourceId"],
+    },
+  },
+  {
     name: "web_search",
     description:
       'Unified web search. Auto-routes to Tavily/Firecrawl/Exa/xAI based on query intent. Supports modes like "web", "news", "social", "docs", "research", "github", "pdf".',
@@ -238,7 +295,7 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
   {
     name: "platform_status",
     description:
-      "Check the availability and configuration status of all platforms, grouped by source type (academic, web).",
+      "Check the availability and configuration status of all platforms, grouped by source type (academic, patent, web).",
     inputSchema: {
       type: "object",
       properties: {},

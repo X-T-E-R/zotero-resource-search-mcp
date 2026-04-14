@@ -6,11 +6,11 @@ This document records architecture and product decisions for this plugin.
 
 **A search executor inside Zotero**, not a fixed list of hard-coded databases:
 
-- The plugin exposes **8 MCP tools** (JSON-RPC over Streamable HTTP) for academic search, web search, lookup, and Zotero writes.
-- **Academic sources** are loaded as **pluggable packages** (`manifest.json` + `provider.js`), bundled under `addon/providers/<id>/` at build time. Users can **override** or **add** sources via the profile directory or **Import .zip** in settings.
+- The plugin exposes **10 MCP tools** (JSON-RPC over Streamable HTTP) for academic search, patent search/detail, web search, lookup, and Zotero writes.
+- **Academic sources** are loaded as **pluggable packages** (`manifest.json` + `provider.js`) from the user profile directory, imported zips, or a configured provider repository.
 - **Web search** uses a separate router (Tavily / Firecrawl / Exa / xAI / optional [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy)) and is **not** packaged as pluggable `provider.js` bundles today — it stays in `src/providers/web/`.
 
-We **encourage custom sources**: publish a zip, share a registry URL, or fork the repo and add packages under `src/providers/packages/<id>/`.
+We **encourage custom sources**: publish a zip, share a provider repository URL, or maintain provider source in the external `resource-search-providers` repository.
 
 ## Architecture
 
@@ -27,8 +27,8 @@ flowchart LR
     Web[WebSearchRouter]
   end
   subgraph sources [Sources]
-    Builtin[addon_providers_builtin]
     User[profile_user_providers]
+    Remote[provider_repository_registry]
     WebAPIs[Web_APIs]
   end
   MCP -->|POST_/mcp| HTTP
@@ -36,8 +36,8 @@ flowchart LR
   Tools --> Loader
   Tools --> Web
   Loader --> Sandbox
-  Sandbox --> Builtin
   Sandbox --> User
+  Sandbox --> Remote
   Web --> WebAPIs
 ```
 
@@ -51,25 +51,26 @@ flowchart LR
 
 Loading order:
 
-1. Built-in list from `addon/providers/index.json`.
-2. User directory: `<ZoteroProfile>/zotero-resource-search/providers/<id>/` (same layout).
-3. **User wins** on duplicate `id`.
+1. User directory: `<ZoteroProfile>/zotero-resource-search/providers/<id>/` (same layout).
+2. Imported zip packages (extracted into the user directory).
+3. Provider repository installs (downloaded from release-backed `registry.json` assets into the user directory).
 
 Remote **registry** JSON (`{ "providers": [{ "id", "version", "downloadUrl", "sha256?" }] }`) downloads zips and verifies SHA-256 when provided.
 
 Startup is deliberately fail-soft:
 
 - Missing user provider directories are created recursively when possible.
-- A failure in one builtin/user provider does not prevent the remaining academic providers or web backends from registering.
+- A failure in one user-installed provider does not prevent the remaining academic providers or web backends from registering.
 - Loader status is captured as structured startup entries and reused by the settings UI and `platform_status`.
 
 ## MCP tool surface
 
-Eight tools keep the model’s decision space small:
+Ten tools keep the model’s decision space small:
 
 | Tool                                                | Role                                           |
 | --------------------------------------------------- | ---------------------------------------------- |
 | `academic_search`                                   | Route to registered academic `SearchProvider`s |
+| `patent_search` / `patent_detail`                   | Patent provider search + detail lookup         |
 | `web_search` / `web_research`                       | Web router                                     |
 | `resource_lookup`                                   | Translators + URL extract                      |
 | `resource_add` / `collection_list` / `resource_pdf` | Zotero integration                             |

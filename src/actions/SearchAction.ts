@@ -2,6 +2,7 @@ import { providerRegistry } from "../providers/registry";
 import { configProvider } from "../infra/ConfigProvider";
 import type { SearchOptions, SearchResult } from "../models/types";
 import { logger } from "../infra/Logger";
+import { getAcademicSourceGuidance } from "../providers/academicSourceGuidance";
 
 export class SearchAction {
   async execute(
@@ -11,6 +12,18 @@ export class SearchAction {
   ): Promise<SearchResult | SearchResult[]> {
     if (platform === "all") {
       return this.searchByType(query, "academic", options);
+    }
+    return this.searchSingle(query, platform, options);
+  }
+
+  async executeBySourceType(
+    query: string,
+    sourceType: "academic" | "web" | "patent",
+    platform: string = "all",
+    options?: SearchOptions,
+  ): Promise<SearchResult | SearchResult[]> {
+    if (platform === "all") {
+      return this.searchByType(query, sourceType, options);
     }
     return this.searchSingle(query, platform, options);
   }
@@ -49,6 +62,16 @@ export class SearchAction {
   ): Promise<SearchResult[]> {
     const providers = providerRegistry.getByType(sourceType);
     if (providers.length === 0) {
+      const guidance =
+        sourceType === "academic"
+          ? getAcademicSourceGuidance({
+              locale: String((Zotero as any)?.locale || "").toLowerCase().startsWith("zh")
+                ? "zh"
+                : "en",
+              academicProviderCount: 0,
+              registryUrl: configProvider.getString("providers.registryUrl", ""),
+            })
+          : null;
       return [
         {
           platform: "all",
@@ -56,7 +79,10 @@ export class SearchAction {
           totalResults: 0,
           items: [],
           page: options?.page ?? 1,
-          error: "No search providers available",
+          error:
+            guidance?.needsAttention && guidance.details.length
+              ? `${guidance.title}: ${guidance.details.join(" ")}`
+              : "No search providers available",
         },
       ];
     }

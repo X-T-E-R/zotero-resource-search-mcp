@@ -4,8 +4,8 @@ pref-tab-manage = 管理
 
 pref-header-title = Zotero Resource Search MCP
 pref-header-homepage = GitHub
-pref-sources-intro = 在此启用学术源与网页后端；共享 API 密钥见下方。在「管理」页安装更多提供方包。
-pref-sources-ext-note = 更多源：在「管理」页导入 .zip 或使用源仓库。用户包位于配置目录/zotero-resource-search/providers/。
+pref-sources-intro = 在此配置学术 provider 包与网页后端；共享 API 密钥见下方。更多源请到「管理」页安装。
+pref-sources-ext-note = 更多源：在「管理」页导入 .zip 或填写 provider 源仓库。用户包位于配置目录/zotero-resource-search/providers/。
 pref-logging-title = 日志
 
 pref-general-title = 通用设置
@@ -60,14 +60,14 @@ pref-advanced-settings = 高级设置
 pref-extra-apikeys-title = 其他 API 密钥（预留）
 
 pref-providers-title = 可插拔搜索源
-pref-providers-desc = 内置源随插件打包；用户安装的同名源会覆盖内置。用户目录：配置目录/zotero-resource-search/providers/
+pref-providers-desc = 插件已不再内建学术源。请填写 provider 源仓库 URL 或导入 .zip 包。用户目录：配置目录/zotero-resource-search/providers/
 pref-providers-refresh =
     .label = 刷新列表
 pref-providers-import =
     .label = 导入 .zip…
 pref-providers-reload =
     .label = 重新加载源
-pref-providers-registry-url = 源仓库 URL：
+pref-providers-registry-url = Provider 源仓库 URL：
 pref-providers-registry-check =
     .label = 检查仓库更新
 

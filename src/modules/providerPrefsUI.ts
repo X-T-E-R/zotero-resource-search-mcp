@@ -2,6 +2,8 @@ import { listProviderSummaries, reloadProviders } from "../providers/loader";
 import { installProviderFromZipFile, pickZipFile, removeUserProvider } from "./providerInstaller";
 import { checkRegistryAndInstallUpdates } from "./remoteProviderRegistry";
 import { getString } from "../utils/locale";
+import { getPref } from "../utils/prefs";
+import { getAcademicSourceGuidance } from "../providers/academicSourceGuidance";
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
 
@@ -92,12 +94,44 @@ export function setupProviderPrefsUI(win: Window): void {
 
   const refresh = () => {
     const tbody = doc.getElementById("zrs-provider-list");
+    const guidanceBox = doc.getElementById("zrs-provider-guidance");
     if (!tbody) return;
     while (tbody.firstChild) {
       tbody.removeChild(tbody.firstChild);
     }
+    if (guidanceBox) {
+      while (guidanceBox.firstChild) {
+        guidanceBox.removeChild(guidanceBox.firstChild);
+      }
+    }
     try {
       const rows = listProviderSummaries();
+      const academicCount = rows.filter((row) => row.sourceType === "academic").length;
+      const guidance = getAcademicSourceGuidance({
+        locale: lang,
+        academicProviderCount: academicCount,
+        registryUrl: getPref("providers.registryUrl"),
+      });
+      if (guidanceBox && guidance.needsAttention) {
+        const wrap = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+        wrap.setAttribute(
+          "style",
+          "border:1px solid #b6d4fe;background:#f4f8ff;border-radius:6px;padding:8px 10px",
+        );
+        const title = doc.createElementNS(HTML_NS, "strong") as HTMLElement;
+        title.textContent = guidance.title;
+        wrap.appendChild(title);
+        const list = doc.createElementNS(HTML_NS, "ul") as HTMLElement;
+        list.setAttribute("style", "margin:6px 0 0 18px;padding:0");
+        for (const detail of guidance.details) {
+          const li = doc.createElementNS(HTML_NS, "li") as HTMLElement;
+          li.textContent = detail;
+          li.setAttribute("style", "margin:4px 0");
+          list.appendChild(li);
+        }
+        wrap.appendChild(list);
+        guidanceBox.appendChild(wrap);
+      }
       rows.sort((a, b) => {
         if (a.available !== b.available) return a.available ? -1 : 1;
         if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;

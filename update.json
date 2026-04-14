@@ -3,8 +3,8 @@
     "zotero-resource-search-mcp@xter.org": {
       "updates": [
         {
-          "version": "0.1.0",
-          "update_link": "https://github.com/X-T-E-R/zotero-resource-search-mcp/releases/download/v0.1.0/zotero-resource-search-mcp-0.1.0.xpi",
+          "version": "0.2.0",
+          "update_link": "https://github.com/X-T-E-R/zotero-resource-search-mcp/releases/download/v0.2.0/zotero-resource-search-mcp-0.2.0.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "6.999",

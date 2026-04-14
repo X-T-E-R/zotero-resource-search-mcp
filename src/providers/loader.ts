@@ -17,7 +17,6 @@ import {
 } from "./runtime/fsUtils";
 import { assertMinPluginVersion } from "./runtime/semver";
 import { invokeProviderFactory } from "./sandbox/invokeFactory";
-import { builtinProviderCatalog } from "./builtinCatalog";
 import {
   PluggableSearchProvider,
   type ProviderAvailabilityCheck,
@@ -33,7 +32,7 @@ export interface ProviderStartupEntry {
   id: string;
   name: string;
   sourceType: "academic" | "web" | "patent";
-  kind: "builtin" | "user" | "web";
+  kind: "user" | "web";
   version?: string;
   source?: string;
   capabilities?: string[];
@@ -46,6 +45,7 @@ export interface ProviderStartupEntry {
 
 export interface ProviderStartupReport {
   academic: ProviderStartupEntry[];
+  patent: ProviderStartupEntry[];
   web: ProviderStartupEntry[];
   issues: string[];
 }
@@ -54,7 +54,7 @@ export interface ProviderSummaryEntry {
   id: string;
   name: string;
   version?: string;
-  kind: "builtin" | "user" | "web";
+  kind: "user" | "web";
   sourceType: "academic" | "web" | "patent";
   path?: string;
   registered: boolean;
@@ -68,7 +68,7 @@ interface StartupEntryBase {
   id: string;
   name: string;
   sourceType: "academic" | "web" | "patent";
-  kind: "builtin" | "user" | "web";
+  kind: "user" | "web";
   version?: string;
   source?: string;
   capabilities?: string[];
@@ -150,6 +150,13 @@ function extraAvailabilityFor(manifest: ProviderManifest): ProviderAvailabilityC
         check: () => !!configProvider.getString("api.elsevier.key"),
         reason: "Missing Elsevier API key",
       };
+    case "patentstar":
+      return {
+        check: () =>
+          !!configProvider.getString("platform.patentstar.loginName") &&
+          !!configProvider.getString("platform.patentstar.password"),
+        reason: "Missing PatentStar login credentials",
+      };
     default:
       return undefined;
   }
@@ -171,32 +178,13 @@ function registerOne(
   providerRegistry.registerSearchProvider(provider);
 }
 
-function registerBuiltinProvider(
-  manifest: ProviderManifest,
-  createProvider: (api: ProviderAPI) => PluggableProviderImpl,
-): void {
-  const source: LoadedProviderSource = {
-    kind: "builtin",
-    path: `${rootURI}providers/${manifest.id}/`,
-  };
-  const api = createProviderApi(manifest, manifest.id);
-  const impl = createProvider(api);
-  const provider = new PluggableSearchProvider(
-    manifest,
-    impl,
-    source,
-    extraAvailabilityFor(manifest),
-  );
-  providerRegistry.registerSearchProvider(provider);
-}
-
 function buildAcademicRuntimeEntry(entry: StartupEntryBase): ProviderStartupEntry {
   const provider = providerRegistry.get(entry.id);
   const status =
     provider instanceof PluggableSearchProvider
       ? provider.getRuntimeStatus()
       : {
-          enabled: configProvider.getBool(`platform.${entry.id}.enabled`, entry.id !== "scopus"),
+          enabled: configProvider.getBool(`platform.${entry.id}.enabled`, true),
           configured: false,
           available: false,
           reason: undefined as string | undefined,
@@ -259,46 +247,6 @@ export async function loadAllProviders(): Promise<void> {
     string,
     { manifest: ProviderManifest; bundle: string; source: LoadedProviderSource }
   >();
-
-  for (const builtin of builtinProviderCatalog) {
-    const { manifest } = builtin;
-    const base = `${rootURI}providers/${manifest.id}/`;
-    try {
-      assertMinPluginVersion(manifest.minPluginVersion);
-      recordStartupEntry({
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version,
-        sourceType: manifest.sourceType,
-        kind: "builtin",
-        source: base,
-        registered: false,
-      });
-      registerBuiltinProvider(manifest, builtin.createProvider);
-      recordStartupEntry({
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version,
-        sourceType: manifest.sourceType,
-        kind: "builtin",
-        source: base,
-        registered: true,
-      });
-    } catch (e) {
-      logger.error(`Failed to load builtin provider ${manifest.id}`, e);
-      reportZoteroError(`Failed to load builtin provider ${manifest.id}`, e);
-      recordStartupEntry({
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version,
-        sourceType: manifest.sourceType,
-        kind: "builtin",
-        source: base,
-        registered: false,
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
-  }
 
   const userRoot = getUserProvidersRoot();
   let userDirs: string[] = [];
@@ -402,6 +350,9 @@ export function getProviderStartupReport(): ProviderStartupReport {
     academic: entries
       .filter((entry) => entry.sourceType === "academic")
       .map((entry) => buildAcademicRuntimeEntry(entry)),
+    patent: entries
+      .filter((entry) => entry.sourceType === "patent")
+      .map((entry) => buildAcademicRuntimeEntry(entry)),
     web: entries
       .filter((entry) => entry.sourceType === "web")
       .map((entry) => buildWebRuntimeEntry(entry)),
@@ -411,7 +362,7 @@ export function getProviderStartupReport(): ProviderStartupReport {
 
 export function listProviderSummaries(): ProviderSummaryEntry[] {
   const report = getProviderStartupReport();
-  return [...report.academic, ...report.web].map((entry) => ({
+  return [...report.academic, ...report.patent, ...report.web].map((entry) => ({
     id: entry.id,
     name: entry.name,
     version: entry.version,

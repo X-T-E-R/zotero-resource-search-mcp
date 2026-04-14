@@ -9,6 +9,7 @@ export interface HttpRequestOptions {
   params?: Record<string, any>;
   headers?: Record<string, string>;
   timeout?: number;
+  withCredentials?: boolean;
 }
 
 export class HttpClient {
@@ -31,13 +32,14 @@ export class HttpClient {
       method: "GET",
       headers: { ...this.defaultHeaders, ...options?.headers },
       timeout: options?.timeout,
+      withCredentials: options?.withCredentials,
     });
   }
 
   async post<T = any>(
     url: string,
     body?: any,
-    options?: { headers?: Record<string, string> },
+    options?: { headers?: Record<string, string>; timeout?: number; withCredentials?: boolean },
   ): Promise<HttpResponse<T>> {
     const fullURL = this.buildURL(url);
     const headers: Record<string, string> = {
@@ -59,6 +61,8 @@ export class HttpClient {
       method: "POST",
       headers,
       body: requestBody,
+      timeout: options?.timeout,
+      withCredentials: options?.withCredentials,
     });
   }
 
@@ -96,13 +100,20 @@ export class HttpClient {
 
   private async request<T>(
     url: string,
-    init: { method: string; headers: Record<string, string>; body?: string; timeout?: number },
+    init: {
+      method: string;
+      headers: Record<string, string>;
+      body?: string;
+      timeout?: number;
+      withCredentials?: boolean;
+    },
   ): Promise<HttpResponse<T>> {
     const timeoutMs = init.timeout ?? this.timeout;
     const fetchOptions: Record<string, any> = {
       method: init.method,
       headers: init.headers,
       body: init.body,
+      credentials: init.withCredentials ? "include" : "same-origin",
     };
 
     let timer: any;
@@ -167,13 +178,19 @@ export class HttpClient {
 
   private requestViaXHR<T>(
     url: string,
-    init: { method: string; headers: Record<string, string>; body?: string },
+    init: {
+      method: string;
+      headers: Record<string, string>;
+      body?: string;
+      withCredentials?: boolean;
+    },
     timeoutMs: number,
   ): Promise<HttpResponse<T>> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open(init.method, url, true);
       xhr.timeout = timeoutMs;
+      xhr.withCredentials = Boolean(init.withCredentials);
 
       for (const [key, value] of Object.entries(init.headers)) {
         try {

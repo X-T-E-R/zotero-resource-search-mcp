@@ -1,4 +1,4 @@
-import type { ResourceItem, SearchOptions, SearchResult } from "../../models/types";
+import type { PatentDetailResult, ResourceItem, SearchOptions, SearchResult } from "../../models/types";
 
 /** HTTP response from provider HTTP helpers */
 export interface ProviderHttpResponse<T = unknown> {
@@ -12,6 +12,7 @@ export interface ProviderHttpRequestOptions {
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   timeout?: number;
+  withCredentials?: boolean;
 }
 
 /**
@@ -27,7 +28,7 @@ export interface ProviderAPI {
     post<T = unknown>(
       url: string,
       body?: string | Record<string, unknown>,
-      options?: { headers?: Record<string, string>; timeout?: number },
+      options?: { headers?: Record<string, string>; timeout?: number; withCredentials?: boolean },
     ): Promise<ProviderHttpResponse<T>>;
   };
   xml: {
@@ -66,6 +67,7 @@ export interface ProviderAPI {
 /** What a provider bundle must return from createProvider(api) */
 export interface PluggableProviderImpl {
   search(query: string, options?: SearchOptions): Promise<SearchResult>;
+  getDetail?(sourceId: string, options?: Record<string, unknown>): Promise<PatentDetailResult>;
 }
 
 export type ProviderFactory = (api: ProviderAPI) => PluggableProviderImpl;
@@ -108,7 +110,7 @@ export interface ProviderConfigFieldSchema {
 }
 
 export interface LoadedProviderSource {
-  kind: "builtin" | "user";
+  kind: "user";
   path: string;
 }
 
