@@ -21,6 +21,7 @@
     "start": "zotero-plugin serve",
     "build:providers": "node scripts/build-providers.mjs",
     "build": "npm run build:providers && zotero-plugin build && tsc --noEmit",
+    "build:xpi": "node scripts/build-xpi.mjs",
     "prepare-release": "node scripts/prepare-release.js",
     "lint:check": "prettier --check . && eslint .",
     "lint:fix": "prettier --write . && eslint . --fix",
