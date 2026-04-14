@@ -26,6 +26,9 @@ jobs:
       - name: Build plugin
         run: npm run build
 
+      - name: Run smoke test
+        run: npm run test:smoke
+
       - name: Prepare release assets
         run: npm run prepare-release
 

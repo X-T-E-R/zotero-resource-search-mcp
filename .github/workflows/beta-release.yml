@@ -27,6 +27,9 @@ jobs:
       - name: Build plugin
         run: npm run build
 
+      - name: Run smoke test
+        run: npm run test:smoke
+
       - name: Upload build artifact for debugging
         uses: actions/upload-artifact@v4
         with:

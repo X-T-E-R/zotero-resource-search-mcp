@@ -24,3 +24,6 @@ jobs:
 
       - name: Build plugin
         run: npm run build
+
+      - name: Run smoke test
+        run: npm run test:smoke
