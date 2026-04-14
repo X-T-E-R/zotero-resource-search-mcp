@@ -91,6 +91,27 @@ function injectApiIntoSandbox(Cu: any, sandbox: any, api: ProviderAPI): void {
   exportAsync(rateLimit, "acquire", api.rateLimit.acquire);
 }
 
+function buildProviderInitEvalSource(bundleCode: string): string {
+  return `(() => {
+${bundleCode}
+const exp =
+  typeof __zrs_exports !== "undefined"
+    ? __zrs_exports
+    : typeof globalThis !== "undefined"
+      ? globalThis.__zrs_exports
+      : undefined;
+if (!exp || typeof exp.createProvider !== "function") {
+  throw new Error("Missing __zrs_exports.createProvider");
+}
+globalThis.__zrs_provider = exp.createProvider(api);
+return {
+  hasSearch: !!globalThis.__zrs_provider && typeof globalThis.__zrs_provider.search === "function",
+  hasGetDetail:
+    !!globalThis.__zrs_provider && typeof globalThis.__zrs_provider.getDetail === "function"
+};
+})()`;
+}
+
 /**
  * Evaluate provider bundle in a Gecko sandbox and invoke createProvider(api).
  */
@@ -110,24 +131,6 @@ export function invokeProviderFactory(
   const sandbox = Cu.Sandbox(null, sandboxOptions);
 
   try {
-    Cu.evalInSandbox(bundleCode, sandbox, {
-      filename: `provider-${manifest.id}.js`,
-      lineNumber: 1,
-    });
-  } catch (e) {
-    throw new Error(
-      `Provider eval failed (${manifest.id}): ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
-
-  const exp = sandbox.__zrs_exports as
-    | { createProvider?: (a: ProviderAPI) => PluggableProviderImpl }
-    | undefined;
-  if (!exp || typeof exp.createProvider !== "function") {
-    throw new Error(`Missing __zrs_exports.createProvider in bundle: ${manifest.id}`);
-  }
-
-  try {
     injectApiIntoSandbox(Cu, sandbox, api);
   } catch (e) {
     throw new Error(
@@ -135,35 +138,62 @@ export function invokeProviderFactory(
     );
   }
 
-  let impl: PluggableProviderImpl;
+  let implMeta:
+    | {
+        hasSearch?: boolean;
+        hasGetDetail?: boolean;
+      }
+    | undefined;
   try {
-    impl = Cu.evalInSandbox("__zrs_exports.createProvider(api)", sandbox, {
-      filename: `provider-${manifest.id}-init.js`,
+    implMeta = Cu.evalInSandbox(buildProviderInitEvalSource(bundleCode), sandbox, {
+      filename: `provider-${manifest.id}.js`,
       lineNumber: 1,
-    }) as PluggableProviderImpl;
+    }) as { hasSearch?: boolean; hasGetDetail?: boolean } | undefined;
   } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.includes("Missing __zrs_exports.createProvider")) {
+      throw new Error(`Missing __zrs_exports.createProvider in bundle: ${manifest.id}`);
+    }
     throw new Error(
-      `createProvider() failed (${manifest.id}): ${e instanceof Error ? e.message : String(e)}`,
+      `createProvider() failed (${manifest.id}): ${message}`,
     );
   }
 
-  if (!impl || typeof impl.search !== "function") {
+  if (!implMeta?.hasSearch) {
     throw new Error(`createProvider must return { search() } (${manifest.id})`);
   }
 
   return {
     async search(query: string, options?: SearchOptions): Promise<SearchResult> {
-      const raw = await impl.search(query, options);
+      sandbox.__zrs_query = cloneResultIntoSandbox(Cu, sandbox, query);
+      sandbox.__zrs_options = cloneResultIntoSandbox(Cu, sandbox, options);
+      const raw = (await Cu.evalInSandbox(
+        "__zrs_provider.search(__zrs_query, __zrs_options)",
+        sandbox,
+        {
+          filename: `provider-${manifest.id}-search.js`,
+          lineNumber: 1,
+        },
+      )) as SearchResult;
       return sanitizeResult(raw);
     },
     async getDetail(
       sourceId: string,
       options?: Record<string, unknown>,
     ): Promise<PatentDetailResult> {
-      if (typeof impl.getDetail !== "function") {
+      if (!implMeta?.hasGetDetail) {
         throw new Error(`Provider ${manifest.id} does not implement getDetail()`);
       }
-      const raw = await impl.getDetail(sourceId, options);
+      sandbox.__zrs_sourceId = cloneResultIntoSandbox(Cu, sandbox, sourceId);
+      sandbox.__zrs_detailOptions = cloneResultIntoSandbox(Cu, sandbox, options);
+      const raw = (await Cu.evalInSandbox(
+        "__zrs_provider.getDetail(__zrs_sourceId, __zrs_detailOptions)",
+        sandbox,
+        {
+          filename: `provider-${manifest.id}-detail.js`,
+          lineNumber: 1,
+        },
+      )) as PatentDetailResult;
       return sanitizeResult(raw) as PatentDetailResult;
     },
   };
