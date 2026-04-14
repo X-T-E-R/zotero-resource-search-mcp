@@ -238,8 +238,28 @@ export function setupProviderPrefsUI(win: Window): void {
 
   doc.getElementById("zrs-provider-registry-check")?.addEventListener("click", async () => {
     try {
-      const ids = await checkRegistryAndInstallUpdates();
-      win.alert(ids.length ? `Updated: ${ids.join(", ")}` : "No updates installed.");
+      const result = await checkRegistryAndInstallUpdates();
+      if (result.installed.length > 0 && result.failed.length === 0) {
+        win.alert(`Updated: ${result.installed.join(", ")}`);
+      } else if (result.installed.length > 0) {
+        win.alert(
+          [
+            `Updated: ${result.installed.join(", ")}`,
+            "",
+            "Some providers failed:",
+            ...result.failed.map((entry) => `- ${entry.id}: ${entry.error}`),
+          ].join("\n"),
+        );
+      } else if (result.failed.length > 0) {
+        win.alert(
+          [
+            "Failed to install providers:",
+            ...result.failed.map((entry) => `- ${entry.id}: ${entry.error}`),
+          ].join("\n"),
+        );
+      } else {
+        win.alert("No updates installed.");
+      }
       refresh();
     } catch (e) {
       win.alert(String(e));

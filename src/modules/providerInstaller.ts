@@ -13,10 +13,24 @@ import {
   removePath,
 } from "../providers/runtime/fsUtils";
 
-function getFileUtils(): { File: new (path: string) => nsIFile } {
-  return ChromeUtils.importESModule("resource://gre/modules/FileUtils.sys.mjs") as {
-    File: new (path: string) => nsIFile;
-  };
+function newFile(path: string): nsIFile {
+  try {
+    const mod = ChromeUtils.importESModule("resource://gre/modules/FileUtils.sys.mjs") as {
+      File: new (path: string) => nsIFile;
+    };
+    return new mod.File(path);
+  } catch {
+    try {
+      const mod = (Components.utils as any).import("resource://gre/modules/FileUtils.jsm") as {
+        File: new (path: string) => nsIFile;
+      };
+      return new mod.File(path);
+    } catch {
+      const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+      file.initWithPath(path);
+      return file;
+    }
+  }
 }
 
 interface nsIFile {
@@ -35,12 +49,11 @@ interface nsIFile {
  * Extract zip using nsIZipReader (sync).
  */
 export function unzipToDirectory(zipPath: string, destDir: string): void {
-  const { File } = getFileUtils();
   const zr = Cc["@mozilla.org/libjar/zip-reader;1"].createInstance(Ci.nsIZipReader);
-  const zipFile = new File(zipPath);
+  const zipFile = newFile(zipPath);
   zr.open(zipFile);
   try {
-    const destRoot = new File(destDir);
+    const destRoot = newFile(destDir);
     if (!destRoot.exists()) {
       destRoot.create(destRoot.DIRECTORY_TYPE, 0o755);
     }
@@ -54,7 +67,7 @@ export function unzipToDirectory(zipPath: string, destDir: string): void {
       if (parts.length === 0) {
         continue;
       }
-      let parent = new File(destDir);
+      let parent = newFile(destDir);
       for (let i = 0; i < parts.length - 1; i++) {
         parent.append(parts[i]);
         if (!parent.exists()) {
@@ -91,12 +104,28 @@ async function resolveProviderDir(extractedRoot: string): Promise<string> {
   );
 }
 
+async function cleanupStaleInstallDirs(root: string): Promise<void> {
+  const dirs = await listProviderSubdirectories(root);
+  for (const dir of dirs) {
+    const name = dir.split(/[\\/]/).pop() || "";
+    if (!name.startsWith("._install_")) {
+      continue;
+    }
+    try {
+      await removePath(dir, true);
+    } catch (error) {
+      Zotero.debug(`[ResourceSearch] cleanup stale install dir failed: ${dir} -> ${error}`);
+    }
+  }
+}
+
 /**
  * Install provider from a local .zip path. Returns installed provider id.
  */
 export async function installProviderFromZipFile(zipPath: string): Promise<string> {
   const root = getUserProvidersRoot();
   await ensureDirectory(root);
+  await cleanupStaleInstallDirs(root);
   const tmp = joinPaths(root, `._install_${Date.now()}`);
   await ensureDirectory(tmp);
   try {
@@ -106,16 +135,19 @@ export async function installProviderFromZipFile(zipPath: string): Promise<strin
     const manifest = parseProviderManifest(manifestText);
     await readTextFile(joinPaths(srcDir, "provider.js"));
 
-    const { File } = getFileUtils();
     const target = joinPaths(root, manifest.id);
     await removePath(target, true);
 
-    const src = new File(srcDir);
-    const parent = new File(root);
+    const src = newFile(srcDir);
+    const parent = newFile(root);
     src.copyTo(parent, manifest.id);
     return manifest.id;
   } finally {
-    await removePath(tmp, true);
+    try {
+      await removePath(tmp, true);
+    } catch (error) {
+      Zotero.debug(`[ResourceSearch] cleanup install dir failed: ${tmp} -> ${error}`);
+    }
   }
 }
 

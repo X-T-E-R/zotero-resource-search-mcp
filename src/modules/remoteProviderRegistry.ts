@@ -27,6 +27,16 @@ export interface RemoteRegistryManifest {
   providers: RemoteRegistryEntry[];
 }
 
+export interface RemoteRegistryInstallFailure {
+  id: string;
+  error: string;
+}
+
+export interface RemoteRegistryInstallSummary {
+  installed: string[];
+  failed: RemoteRegistryInstallFailure[];
+}
+
 export async function fetchRegistry(url: string): Promise<RemoteRegistryManifest> {
   const candidates = expandRegistryUrlCandidates(url);
   const errors: string[] = [];
@@ -66,26 +76,32 @@ export async function installRegistryEntry(entry: RemoteRegistryEntry): Promise<
   try {
     await installProviderFromZipFile(tmp);
   } finally {
-    await removePath(tmp, false);
+    try {
+      await removePath(tmp, false);
+    } catch (error) {
+      Zotero.debug(`[ResourceSearch] cleanup downloaded archive failed: ${tmp} -> ${error}`);
+    }
   }
   await reloadProviders();
 }
 
-export async function checkRegistryAndInstallUpdates(): Promise<string[]> {
+export async function checkRegistryAndInstallUpdates(): Promise<RemoteRegistryInstallSummary> {
   const url = getPref("providers.registryUrl");
   if (!url || !url.trim()) {
     throw new Error("Set providers registry URL in preferences first");
   }
   const reg = await fetchRegistry(url.trim());
   const installed: string[] = [];
+  const failed: RemoteRegistryInstallFailure[] = [];
   for (const entry of reg.providers) {
     try {
       await installRegistryEntry(entry);
       installed.push(entry.id);
     } catch (e) {
-      /* continue others */
-      Zotero.debug(`[ResourceSearch] registry install ${entry.id} failed: ${e}`);
+      const message = e instanceof Error ? e.message : String(e);
+      failed.push({ id: entry.id, error: message });
+      Zotero.debug(`[ResourceSearch] registry install ${entry.id} failed: ${message}`);
     }
   }
-  return installed;
+  return { installed, failed };
 }
