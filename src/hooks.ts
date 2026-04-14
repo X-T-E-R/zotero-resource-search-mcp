@@ -97,6 +97,7 @@ async function onStartup() {
     pluginID: addon.data.config.addonID,
     src: rootURI + "content/preferences.xhtml",
     label: prefsLabel,
+    image: rootURI + "content/icons/icon48.png",
   });
 
   await Promise.all(Zotero.getMainWindows().map((win) => onMainWindowLoad(win)));

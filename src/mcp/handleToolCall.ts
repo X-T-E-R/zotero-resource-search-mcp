@@ -1,7 +1,8 @@
 import { searchAction } from "../actions/SearchAction";
 import { lookupAction } from "../actions/LookupAction";
 import { addAction } from "../actions/AddAction";
-import { providerRegistry } from "../providers/registry";
+import { configProvider } from "../infra/ConfigProvider";
+import { getProviderStartupReport } from "../providers/loader";
 import { collectionHelper } from "../zotero/CollectionHelper";
 import { pdfFetcher } from "../zotero/PdfFetcher";
 import { webSearchRouter } from "../providers/web/WebSearchRouter";
@@ -203,23 +204,52 @@ async function handleResourcePdf(args: any): Promise<any> {
 }
 
 async function handlePlatformStatus(): Promise<any> {
-  const all = providerRegistry.getAll();
+  const report = getProviderStartupReport();
+  const academic = report.academic.map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    sourceType: entry.sourceType,
+    kind: entry.kind,
+    version: entry.version,
+    source: entry.source,
+    registered: entry.registered,
+    enabled: entry.enabled,
+    configured: entry.configured,
+    available: entry.available,
+    error: entry.error,
+  }));
 
-  const academic = all
-    .filter((p) => p.sourceType === "academic")
-    .map((p) => ({ id: p.id, name: p.name, sourceType: p.sourceType, available: p.isAvailable() }));
-
-  const webProviders = webSearchRouter.getHealth();
+  const webProviders = report.web.map((entry) => ({
+    name: entry.id === "mysearch" ? "mysearch_proxy" : entry.id,
+    displayName: entry.name,
+    registered: entry.registered,
+    enabled: entry.enabled,
+    configured: entry.configured,
+    available: entry.available,
+    error: entry.error,
+    capabilities: entry.capabilities ?? [],
+    base_url:
+      entry.id === "mysearch"
+        ? configProvider.getString("web.mysearch.baseUrl", "")
+        : configProvider.getString(`web.${entry.id}.baseUrl`, ""),
+    auth_mode:
+      entry.id === "tavily" ? configProvider.getString("web.tavily.authMode", "body") : "bearer",
+  }));
 
   return {
+    issues: report.issues,
     academic: {
       totalPlatforms: academic.length,
+      registeredCount: academic.filter((p) => p.registered).length,
       availableCount: academic.filter((p) => p.available).length,
       platforms: academic,
     },
     web: {
+      totalProviders: webProviders.length,
+      registeredCount: webProviders.filter((p) => p.registered).length,
+      configuredCount: webProviders.filter((p) => p.configured).length,
       providers: webProviders,
-      anyConfigured: webSearchRouter.hasAnyProvider(),
+      anyConfigured: webProviders.some((p) => p.configured),
     },
   };
 }

@@ -20,19 +20,19 @@ Built-in sources live in the repo under [`src/providers/packages/`](../../src/pr
 
 Validated by [`parseProviderManifest`](../../src/providers/manifest/validate.ts). Important fields:
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `id` | yes | Match `^[a-z][a-z0-9_-]{1,63}$/`; folder name must equal `id`. |
-| `name` | yes | Display name. |
-| `version` | yes | Semver-like, e.g. `1.0.0`. |
-| `sourceType` | yes | `academic` \| `web` \| `patent` (academic search uses `academic`). |
-| `permissions.urls` | yes | URL patterns allowed for `api.http` (e.g. `https://api.example.com/*`). |
-| `minPluginVersion` | no | Minimum plugin semver for load. |
-| `configSchema` | no | Keys under `platform.<id>.*` in prefs (boolean / string / number). |
-| `allowedGlobalPrefs` | no | Full pref keys the bundle may read via `api.getGlobalPref` (e.g. `api.wos.key`). |
-| `rateLimitPerMinute` | no | Default 60. |
-| `searchTimeoutMs` | no | Default 60000. |
-| `integrity.sha256` | no | Optional hash of `provider.js` for remote installs. |
+| Field                | Required | Description                                                                                                                                                                                             |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                 | yes      | Match `^[a-z][a-z0-9_-]{1,63}$/`; folder name must equal `id`.                                                                                                                                          |
+| `name`               | yes      | Display name.                                                                                                                                                                                           |
+| `version`            | yes      | Semver-like, e.g. `1.0.0`.                                                                                                                                                                              |
+| `sourceType`         | yes      | `academic` \| `web` \| `patent` (academic search uses `academic`).                                                                                                                                      |
+| `permissions.urls`   | yes      | URL patterns allowed for `api.http` (e.g. `https://api.example.com/*`).                                                                                                                                 |
+| `minPluginVersion`   | no       | Minimum plugin semver for load.                                                                                                                                                                         |
+| `configSchema`       | no       | Keys under `platform.<id>.*` in prefs (boolean / string / number). Supports optional UI hints such as `label`, `labelZh`, `description`, `advanced`, `placeholder`, `secret`, `min`, `max`, and `enum`. |
+| `allowedGlobalPrefs` | no       | Full pref keys the bundle may read via `api.getGlobalPref` (e.g. `api.wos.key`).                                                                                                                        |
+| `rateLimitPerMinute` | no       | Default 60.                                                                                                                                                                                             |
+| `searchTimeoutMs`    | no       | Default 60000.                                                                                                                                                                                          |
+| `integrity.sha256`   | no       | Optional hash of `provider.js` for remote installs.                                                                                                                                                     |
 
 Example (from arXiv):
 
@@ -48,7 +48,14 @@ Example (from arXiv):
   },
   "configSchema": {
     "enabled": { "type": "boolean", "default": true },
-    "sortOrder": { "type": "string", "default": "descending", "enum": ["ascending", "descending"] }
+    "sortOrder": {
+      "type": "string",
+      "default": "descending",
+      "enum": ["ascending", "descending"],
+      "label": "Sort Order",
+      "labelZh": "排序方向",
+      "advanced": true
+    }
   },
   "rateLimitPerMinute": 120
 }
@@ -61,7 +68,7 @@ Must expose a factory compatible with [`ProviderFactory`](../../src/providers/_s
 ```ts
 function createProvider(api: ProviderAPI): {
   search(query: string, options?: SearchOptions): Promise<SearchResult>;
-}
+};
 ```
 
 **ProviderAPI** (injected):
@@ -70,6 +77,21 @@ function createProvider(api: ProviderAPI): {
 - `api.xml` — parse Atom/XML.
 - `api.dom` — parse HTML.
 - `api.config.getString|getNumber|getBool` — keys relative to `platform.<id>.` (from `configSchema` + prefs).
+
+### `configSchema` UI hints
+
+The Sources tab now renders academic provider settings from `configSchema` directly.
+
+- `label` / `labelZh` — preferred display labels
+- `description` — optional help text below the field
+- `advanced` — moves the field into the collapsible Advanced section
+- `placeholder` — placeholder for string inputs
+- `secret: true` — render string input as password field
+- `min` / `max` — bounds for numeric inputs
+- `enum` — render string input as a select
+
+The plugin still injects common academic fields (`enabled`, `defaultSort`, `maxResults`) even if you omit them from your manifest.
+
 - `api.getGlobalPref*` — only keys listed in `allowedGlobalPrefs`.
 - `api.log.*`
 - `api.rateLimit.acquire()` — per-provider RPM from manifest.
@@ -112,3 +134,5 @@ Use **Check registry** to download and install (SHA-256 verified when provided).
 
 - Enable debug logging in **Infrastructure → Log level**.
 - Broken packages are skipped with errors in the Zotero debug log (`[ResourceSearch]`).
+- `platform_status` reports `registered`, `enabled`, `configured`, `available`, and `error` for both academic providers and web backends.
+- The plugin now tolerates failures in the user provider directory or a single provider bundle without aborting the rest of startup.

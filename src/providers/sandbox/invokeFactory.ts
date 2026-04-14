@@ -10,6 +10,87 @@ function sanitizeSearchResult(result: SearchResult): SearchResult {
   }
 }
 
+function cloneResultIntoSandbox<T>(Cu: any, sandbox: any, value: T): T {
+  if (value === undefined || value === null) {
+    return value;
+  }
+  if (typeof value !== "object") {
+    return value;
+  }
+  try {
+    return Cu.cloneInto(value, sandbox) as T;
+  } catch {
+    return value;
+  }
+}
+
+function injectApiIntoSandbox(Cu: any, sandbox: any, api: ProviderAPI): void {
+  const sandboxApi = Cu.createObjectIn(sandbox);
+  sandbox.api = sandboxApi;
+
+  const defineNamespace = (parent: any, key: string) => {
+    const namespace = Cu.createObjectIn(sandbox);
+    parent[key] = namespace;
+    return namespace;
+  };
+
+  const exportSync = <Args extends unknown[], Result>(
+    parent: any,
+    key: string,
+    fn: (...args: Args) => Result,
+  ) => {
+    Cu.exportFunction(
+      (...args: Args) => cloneResultIntoSandbox(Cu, sandbox, fn(...args)),
+      parent,
+      { defineAs: key },
+    );
+  };
+
+  const exportAsync = <Args extends unknown[], Result>(
+    parent: any,
+    key: string,
+    fn: (...args: Args) => Promise<Result>,
+  ) => {
+    Cu.exportFunction(
+      async (...args: Args) => cloneResultIntoSandbox(Cu, sandbox, await fn(...args)),
+      parent,
+      { defineAs: key },
+    );
+  };
+
+  const http = defineNamespace(sandboxApi, "http");
+  exportAsync(http, "get", api.http.get);
+  exportAsync(http, "post", api.http.post);
+
+  const xml = defineNamespace(sandboxApi, "xml");
+  exportSync(xml, "parse", api.xml.parse);
+  exportSync(xml, "getText", api.xml.getText);
+  exportSync(xml, "getTextAll", api.xml.getTextAll);
+  exportSync(xml, "getElements", api.xml.getElements);
+  exportSync(xml, "getAttribute", api.xml.getAttribute);
+
+  const dom = defineNamespace(sandboxApi, "dom");
+  exportSync(dom, "parseHTML", api.dom.parseHTML);
+
+  const config = defineNamespace(sandboxApi, "config");
+  exportSync(config, "getString", api.config.getString);
+  exportSync(config, "getNumber", api.config.getNumber);
+  exportSync(config, "getBool", api.config.getBool);
+
+  exportSync(sandboxApi, "getGlobalPref", api.getGlobalPref);
+  exportSync(sandboxApi, "getGlobalPrefNumber", api.getGlobalPrefNumber);
+  exportSync(sandboxApi, "getGlobalPrefBool", api.getGlobalPrefBool);
+
+  const log = defineNamespace(sandboxApi, "log");
+  exportSync(log, "debug", api.log.debug);
+  exportSync(log, "info", api.log.info);
+  exportSync(log, "warn", api.log.warn);
+  exportSync(log, "error", api.log.error);
+
+  const rateLimit = defineNamespace(sandboxApi, "rateLimit");
+  exportAsync(rateLimit, "acquire", api.rateLimit.acquire);
+}
+
 /**
  * Evaluate provider bundle in a Gecko sandbox and invoke createProvider(api).
  */
@@ -47,10 +128,10 @@ export function invokeProviderFactory(
   }
 
   try {
-    sandbox.api = Cu.cloneInto(api, sandbox, { cloneFunctions: true });
+    injectApiIntoSandbox(Cu, sandbox, api);
   } catch (e) {
     throw new Error(
-      `cloneInto(api) failed (${manifest.id}): ${e instanceof Error ? e.message : String(e)}`,
+      `sandbox API injection failed (${manifest.id}): ${e instanceof Error ? e.message : String(e)}`,
     );
   }
 

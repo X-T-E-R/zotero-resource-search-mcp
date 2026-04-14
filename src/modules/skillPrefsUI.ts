@@ -30,9 +30,14 @@ export function setupSkillPrefsUI(win: Window): void {
   const exportSkillButton = doc.getElementById("export-skill-button") as HTMLButtonElement | null;
   const installSkillButton = doc.getElementById("install-skill-button") as HTMLButtonElement | null;
   const skillMessage = doc.getElementById("skill-export-message") as HTMLElement | null;
+  const clipboardOption = skillTargetSelect?.querySelector(
+    'option[value="clipboard"]',
+  ) as HTMLOptionElement | null;
 
   function getPort(): number {
-    const raw = portInput?.value?.trim() || String(Zotero.Prefs.get(`${config.prefsPrefix}.mcp.server.port`, true) ?? "23121");
+    const raw =
+      portInput?.value?.trim() ||
+      String(Zotero.Prefs.get(`${config.prefsPrefix}.mcp.server.port`, true) ?? "23121");
     const n = parseInt(raw, 10);
     return Number.isFinite(n) && n > 0 ? n : 23121;
   }
@@ -51,13 +56,29 @@ export function setupSkillPrefsUI(win: Window): void {
     return fallback;
   }
 
+  const styleActionButton = (button: HTMLButtonElement | null, text: string) => {
+    if (!button) return;
+    button.textContent = text;
+    button.setAttribute(
+      "style",
+      "min-width:140px;padding:6px 12px;border:1px solid #d7dce5;border-radius:6px;background:#f7f9fc;cursor:pointer",
+    );
+  };
+
+  styleActionButton(exportSkillButton, msg("pref-skills-export-button", "Export Skill…"));
+  styleActionButton(installSkillButton, msg("pref-skills-install-button", "Install to IDE"));
+  if (clipboardOption) {
+    clipboardOption.textContent = msg("pref-skills-target-clipboard", "Clipboard (export only)");
+  }
+
   exportSkillButton?.addEventListener("click", async () => {
     try {
       const target = skillTargetSelect?.value || "clipboard";
       const content = getSkillContent();
       if (target === "clipboard") {
         copyStringToClipboard(content);
-        if (skillMessage) skillMessage.textContent = msg("pref-skills-copied", "Copied to clipboard.");
+        if (skillMessage)
+          skillMessage.textContent = msg("pref-skills-copied", "Copied to clipboard.");
       } else {
         const fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
         fp.init(win as any, "Export SKILL.md", Ci.nsIFilePicker.modeSave);
@@ -66,7 +87,9 @@ export function setupSkillPrefsUI(win: Window): void {
         const rv = await new Promise<number>((resolve) => fp.open(resolve));
         if (rv === Ci.nsIFilePicker.returnOK || rv === Ci.nsIFilePicker.returnReplace) {
           const file = fp.file;
-          const os = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
+          const os = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(
+            Ci.nsIFileOutputStream,
+          );
           os.init(file, 0x02 | 0x08 | 0x20, 0o644, 0);
           const converter = Cc["@mozilla.org/intl/converter-output-stream;1"].createInstance(
             Ci.nsIConverterOutputStream,
@@ -74,7 +97,8 @@ export function setupSkillPrefsUI(win: Window): void {
           (converter as any).init(os, "UTF-8", 0, 0);
           converter.writeString(content);
           converter.close();
-          if (skillMessage) skillMessage.textContent = msg("pref-skills-export-success", "Exported successfully.");
+          if (skillMessage)
+            skillMessage.textContent = msg("pref-skills-export-success", "Exported successfully.");
         }
       }
     } catch (error) {
@@ -96,15 +120,23 @@ export function setupSkillPrefsUI(win: Window): void {
       };
       const relPath = pathMap[target];
       if (!relPath) {
-        if (skillMessage) skillMessage.textContent = msg("pref-skills-install-error", "Choose Cursor, Claude Code, or Codex (not Clipboard).");
+        if (skillMessage)
+          skillMessage.textContent = msg(
+            "pref-skills-install-error",
+            "Choose Cursor, Claude Code, or Codex (not Clipboard).",
+          );
         return;
       }
       const dir = ensureDirRecursive(homeDir, relPath);
       const skillFile = dir.clone();
       skillFile.append("SKILL.md");
-      const os = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
+      const os = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(
+        Ci.nsIFileOutputStream,
+      );
       os.init(skillFile, 0x02 | 0x08 | 0x20, 0o644, 0);
-      const converter = Cc["@mozilla.org/intl/converter-output-stream;1"].createInstance(Ci.nsIConverterOutputStream);
+      const converter = Cc["@mozilla.org/intl/converter-output-stream;1"].createInstance(
+        Ci.nsIConverterOutputStream,
+      );
       (converter as any).init(os, "UTF-8", 0, 0);
       converter.writeString(content);
       converter.close();

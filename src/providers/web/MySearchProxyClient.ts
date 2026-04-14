@@ -1,13 +1,39 @@
 import { HttpClient } from "../../infra/HttpClient";
 import { configProvider } from "../../infra/ConfigProvider";
 import type { WebSearchResponse, WebExtractResponse, WebResearchResponse } from "./types";
+import type { WebBackend, WebBackendCapability, WebBackendConfigField } from "./WebBackend";
+
+const MYSEARCH_CONFIG_SCHEMA: WebBackendConfigField[] = [
+  {
+    key: "baseUrl",
+    label: "Base URL",
+    labelZh: "服务地址",
+    type: "text",
+    placeholder: "http://127.0.0.1:8000",
+  },
+  { key: "apiKey", label: "API Key", labelZh: "API 密钥", type: "password" },
+  { key: "mcpPath", label: "MCP path", labelZh: "MCP 路径", type: "text", advanced: true },
+  {
+    key: "proxyFirst",
+    label: "Prefer proxy for all web operations",
+    labelZh: "所有网页操作优先走代理",
+    type: "checkbox",
+    advanced: true,
+  },
+];
 
 /**
  * Client for a running MySearch-Proxy server instance.
  * When configured, acts as a unified gateway to Tavily/Firecrawl/Exa/xAI
  * with built-in routing, caching, and key management.
  */
-export class MySearchProxyClient {
+export class MySearchProxyClient implements WebBackend {
+  readonly id = "mysearch";
+  readonly name = "MySearch Proxy";
+  readonly description = "Unified gateway (MySearch-Proxy) for web search and extraction";
+  readonly descriptionZh = "统一网关（MySearch-Proxy）用于网页搜索与提取";
+  readonly capabilities = new Set<WebBackendCapability>(["search", "extract"]);
+  readonly configSchema = MYSEARCH_CONFIG_SCHEMA;
   private getHttp(): HttpClient {
     const baseURL = configProvider.getString("web.mysearch.baseUrl", "");
     const apiKey = configProvider.getString("web.mysearch.apiKey", "");
@@ -18,8 +44,16 @@ export class MySearchProxyClient {
     return new HttpClient({ baseURL, timeout: 60_000, headers });
   }
 
+  isEnabled(): boolean {
+    return configProvider.getBool("web.mysearch.enabled", true);
+  }
+
+  hasRequiredConfig(): boolean {
+    return !!configProvider.getString("web.mysearch.baseUrl", "").trim();
+  }
+
   isConfigured(): boolean {
-    return !!configProvider.getString("web.mysearch.baseUrl", "");
+    return this.isEnabled() && this.hasRequiredConfig();
   }
 
   async search(opts: {

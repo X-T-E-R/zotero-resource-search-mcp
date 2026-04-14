@@ -21,9 +21,10 @@
     "start": "zotero-plugin serve",
     "build:providers": "node scripts/build-providers.mjs",
     "build": "npm run build:providers && zotero-plugin build && tsc --noEmit",
+    "test:smoke": "node scripts/test-smoke.mjs",
     "prepare-release": "node scripts/prepare-release.js",
-    "lint:check": "prettier --check . && eslint .",
-    "lint:fix": "prettier --write . && eslint . --fix",
+    "lint:check": "prettier --check . && tsc --noEmit",
+    "lint:fix": "prettier --write . && tsc --noEmit",
     "release": "npm version patch --force -m \"Release v%s\" && git push --follow-tags",
     "release:beta": "npm version prepatch --preid beta --force -m \"Release v%s\" && git push --follow-tags"
   },

@@ -43,3 +43,6 @@ logs/
 
 # Claude Code
 .claude/
+
+.ccw/
+.spec-workflow/

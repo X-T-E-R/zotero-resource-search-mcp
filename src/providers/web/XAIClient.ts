@@ -1,8 +1,59 @@
 import { HttpClient } from "../../infra/HttpClient";
 import { configProvider } from "../../infra/ConfigProvider";
 import type { WebSearchResponse } from "./types";
+import type { WebBackend, WebBackendCapability, WebBackendConfigField } from "./WebBackend";
 
-export class XAIClient {
+const XAI_CONFIG_SCHEMA: WebBackendConfigField[] = [
+  {
+    key: "apiKey",
+    label: "API Key",
+    labelZh: "API 密钥",
+    type: "password",
+    placeholder: "xai-...",
+  },
+  { key: "baseUrl", label: "Base URL", labelZh: "基础地址", type: "text", advanced: true },
+  {
+    key: "searchMode",
+    label: "Search mode",
+    labelZh: "搜索模式",
+    type: "select",
+    advanced: true,
+    options: [
+      { value: "official", label: "Official (Responses API)" },
+      { value: "compatible", label: "Compatible (social gateway)" },
+    ],
+  },
+  { key: "model", label: "Model", labelZh: "模型", type: "text", advanced: true },
+  {
+    key: "responsesPath",
+    label: "Responses path",
+    labelZh: "Responses 路径",
+    type: "text",
+    advanced: true,
+  },
+  {
+    key: "socialBaseUrl",
+    label: "Social base URL",
+    labelZh: "社交网关地址",
+    type: "text",
+    advanced: true,
+  },
+  {
+    key: "socialSearchPath",
+    label: "Social search path",
+    labelZh: "社交搜索路径",
+    type: "text",
+    advanced: true,
+  },
+];
+
+export class XAIClient implements WebBackend {
+  readonly id = "xai";
+  readonly name = "xAI";
+  readonly description = "Web and X (Twitter) search via Grok";
+  readonly descriptionZh = "通过 Grok 进行网页与 X 搜索";
+  readonly capabilities = new Set<WebBackendCapability>(["search"]);
+  readonly configSchema = XAI_CONFIG_SCHEMA;
   private getHttp(): HttpClient {
     const baseURL = configProvider.getString("web.xai.baseUrl", "https://api.x.ai/v1");
     const apiKey = configProvider.getString("web.xai.apiKey", "");
@@ -13,8 +64,16 @@ export class XAIClient {
     return new HttpClient({ baseURL, timeout: 60_000, headers });
   }
 
-  isConfigured(): boolean {
+  isEnabled(): boolean {
+    return configProvider.getBool("web.xai.enabled", true);
+  }
+
+  hasRequiredConfig(): boolean {
     return !!configProvider.getString("web.xai.apiKey", "");
+  }
+
+  isConfigured(): boolean {
+    return this.isEnabled() && this.hasRequiredConfig();
   }
 
   async search(opts: {

@@ -1,3 +1,13 @@
+pref-tab-general = 常规
+pref-tab-sources = 搜索源
+pref-tab-manage = 管理
+
+pref-header-title = Zotero Resource Search MCP
+pref-header-homepage = GitHub
+pref-sources-intro = 在此启用学术源与网页后端；共享 API 密钥见下方。在「管理」页安装更多提供方包。
+pref-sources-ext-note = 更多源：在「管理」页导入 .zip 或使用源仓库。用户包位于配置目录/zotero-resource-search/providers/。
+pref-logging-title = 日志
+
 pref-general-title = 通用设置
 pref-general-fetchpdf =
     .label = 添加文献时默认获取 PDF

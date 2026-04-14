@@ -18,18 +18,18 @@ npm run prepare-release
 
 ## When to bump
 
-| Change | Bump |
-|--------|------|
-| Bugfix, docs, small UI | patch |
-| New features, compatible API | minor |
+| Change                            | Bump  |
+| --------------------------------- | ----- |
+| Bugfix, docs, small UI            | patch |
+| New features, compatible API      | minor |
 | Breaking MCP or manifest contract | major |
 
 ## CI / releases
 
-| Trigger | Workflow |
-|---------|----------|
-| Push / PR to `main` or `master` | `.github/workflows/ci.yml` — `npm ci` + `npm run build` |
-| Tag `v*.*.*` | `.github/workflows/release.yml` — XPI + `update.json` |
+| Trigger                                | Workflow                                                             |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| Push / PR to `main` or `master`        | `.github/workflows/ci.yml` — `npm ci` + `npm run build`              |
+| Tag `v*.*.*`                           | `.github/workflows/release.yml` — XPI + `update.json`                |
 | Tag `v*.*.*-beta.*` or manual dispatch | `.github/workflows/beta-release.yml` — beta XPI + `update-beta.json` |
 
 Publish: commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.

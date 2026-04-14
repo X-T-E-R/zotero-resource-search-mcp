@@ -11,7 +11,14 @@
   "allowedGlobalPrefs": ["api.wos.key"],
   "configSchema": {
     "enabled": { "type": "boolean", "default": true },
-    "database": { "type": "string", "default": "WOS" }
+    "database": {
+      "type": "string",
+      "default": "WOS",
+      "enum": ["WOS", "WOK"],
+      "label": "Database",
+      "labelZh": "数据库",
+      "advanced": true
+    }
   },
   "rateLimitPerMinute": 300
 }

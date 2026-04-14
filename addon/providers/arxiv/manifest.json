@@ -10,7 +10,14 @@
   },
   "configSchema": {
     "enabled": { "type": "boolean", "default": true },
-    "sortOrder": { "type": "string", "default": "descending", "enum": ["ascending", "descending"] }
+    "sortOrder": {
+      "type": "string",
+      "default": "descending",
+      "enum": ["ascending", "descending"],
+      "label": "Sort Order",
+      "labelZh": "排序方向",
+      "advanced": true
+    }
   },
   "rateLimitPerMinute": 120
 }

@@ -1,5 +1,6 @@
 import { getTools } from "../mcp/tools";
 import { handleToolCall } from "../mcp/handleToolCall";
+import { createStatusSnapshot } from "../mcp/statusCatalog";
 
 declare let ztoolkit: any;
 
@@ -231,25 +232,9 @@ export class StreamableMCPServer {
   }
 
   getStatus() {
-    return {
+    return createStatusSnapshot({
       isInitialized: this.isInitialized,
       serverInfo: this.serverInfo,
-      protocolVersion: "2024-11-05",
-      supportedMethods: [
-        "initialize",
-        "initialized",
-        "notifications/initialized",
-        "tools/list",
-        "tools/call",
-        "resources/list",
-        "prompts/list",
-        "ping",
-      ],
-      availableTools: ["resource_search", "resource_lookup", "resource_add", "platform_status"],
-      transport: {
-        type: "streamable-http",
-        keepAliveSupported: false,
-      },
-    };
+    });
   }
 }
