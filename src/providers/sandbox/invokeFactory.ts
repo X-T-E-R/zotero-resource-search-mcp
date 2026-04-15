@@ -18,7 +18,10 @@ function cloneResultIntoSandbox<T>(Cu: any, sandbox: any, value: T): T {
     return value;
   }
   try {
-    return Cu.cloneInto(value, sandbox) as T;
+    return Cu.cloneInto(value, sandbox, {
+      cloneFunctions: false,
+      wrapReflectors: true,
+    }) as T;
   } catch {
     return value;
   }
@@ -85,6 +88,7 @@ function injectApiIntoSandbox(Cu: any, sandbox: any, api: ProviderAPI): void {
   exportSync(xml, "getTextAll", api.xml.getTextAll);
   exportSync(xml, "getElements", api.xml.getElements);
   exportSync(xml, "getAttribute", api.xml.getAttribute);
+  exportSync(xml, "getTextContent", api.xml.getTextContent);
 
   const dom = defineNamespace(sandboxApi, "dom");
   exportSync(dom, "parseHTML", api.dom.parseHTML);

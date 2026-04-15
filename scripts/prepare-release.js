@@ -25,7 +25,7 @@ function generateUpdateJson(isBeta = false) {
     const hasPrerelease = /-beta\.|-alpha\.|-rc\./i.test(version);
     currentVersion = hasPrerelease ? version : `${version}-beta.0`;
   }
-  const updateLink = `${repoUrl}/releases/download/v${currentVersion}/zotero-resource-search-mcp-${currentVersion}.xpi`;
+  const updateLink = `${repoUrl}/releases/download/v${currentVersion}/zotero-resource-search-mcp-v${currentVersion}.xpi`;
 
   return {
     addons: {

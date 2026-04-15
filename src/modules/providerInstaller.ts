@@ -9,9 +9,11 @@ import {
   getUserProvidersRoot,
   joinPaths,
   listProviderSubdirectories,
+  makePathWritable,
   readTextFile,
   removePath,
 } from "../providers/runtime/fsUtils";
+import { removeInstallPath } from "./providerInstallCleanup";
 
 function newFile(path: string): nsIFile {
   try {
@@ -112,7 +114,7 @@ async function cleanupStaleInstallDirs(root: string): Promise<void> {
       continue;
     }
     try {
-      await removePath(dir, true);
+      await removeInstallPath(dir, { removePath, makePathWritable }, true);
     } catch (error) {
       Zotero.debug(`[ResourceSearch] cleanup stale install dir failed: ${dir} -> ${error}`);
     }
@@ -136,7 +138,7 @@ export async function installProviderFromZipFile(zipPath: string): Promise<strin
     await readTextFile(joinPaths(srcDir, "provider.js"));
 
     const target = joinPaths(root, manifest.id);
-    await removePath(target, true);
+    await removeInstallPath(target, { removePath, makePathWritable }, true);
 
     const src = newFile(srcDir);
     const parent = newFile(root);
@@ -144,7 +146,7 @@ export async function installProviderFromZipFile(zipPath: string): Promise<strin
     return manifest.id;
   } finally {
     try {
-      await removePath(tmp, true);
+      await removeInstallPath(tmp, { removePath, makePathWritable }, true);
     } catch (error) {
       Zotero.debug(`[ResourceSearch] cleanup install dir failed: ${tmp} -> ${error}`);
     }
@@ -154,7 +156,7 @@ export async function installProviderFromZipFile(zipPath: string): Promise<strin
 export async function removeUserProvider(id: string): Promise<void> {
   const root = getUserProvidersRoot();
   const dir = joinPaths(root, id);
-  await removePath(dir, true);
+  await removeInstallPath(dir, { removePath, makePathWritable }, true);
 }
 
 export function pickZipFile(window: Window): Promise<string | null> {

@@ -42,6 +42,7 @@ export interface ProviderAPI {
     getTextAll(doc: Document | Element, tag: string): string[];
     getElements(parent: Document | Element, tag: string): Element[];
     getAttribute(el: Element, name: string): string | null;
+    getTextContent(el: Element): string | null;
   };
   dom: {
     parseHTML(html: string): Document;

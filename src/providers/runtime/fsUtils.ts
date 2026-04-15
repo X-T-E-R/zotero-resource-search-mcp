@@ -242,6 +242,10 @@ export async function removePath(path: string, recursive = true): Promise<void> 
   removePathNsIFile(path, recursive);
 }
 
+export async function makePathWritable(path: string, recursive = true): Promise<void> {
+  makePathWritableNsIFile(newFile(path), recursive);
+}
+
 export async function sha256Hex(data: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", data.buffer as ArrayBuffer);
   const bytes = new Uint8Array(digest);
@@ -328,6 +332,32 @@ function removeDirectoryRecursiveNsIFile(dir: nsIFile): void {
     }
   }
   dir.remove(false);
+}
+
+function makePathWritableNsIFile(file: nsIFile, recursive: boolean): void {
+  if (!file.exists()) {
+    return;
+  }
+
+  if (recursive && file.isDirectory()) {
+    const entries = (file as nsIFile & {
+      directoryEntries?: {
+        hasMoreElements: () => boolean;
+        getNext: () => unknown;
+      };
+    }).directoryEntries;
+    if (entries) {
+      while (entries.hasMoreElements()) {
+        makePathWritableNsIFile(coerceNsIFile(entries.getNext()), true);
+      }
+    }
+  }
+
+  try {
+    file.permissions = file.isDirectory() ? 0o755 : 0o644;
+  } catch {
+    /* ignore permission normalization failures */
+  }
 }
 
 function coerceNsIFile(value: unknown): nsIFile {

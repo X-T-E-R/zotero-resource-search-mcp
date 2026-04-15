@@ -46,6 +46,7 @@ export function createProviderApi(manifest: ProviderManifest, providerId: string
     getTextAll: (doc, tag) => XmlParser.getTextAll(doc as Document, tag),
     getElements: (parent, tag) => XmlParser.getElements(parent as Document, tag),
     getAttribute: (el, name) => XmlParser.getAttribute(el, name),
+    getTextContent: (el) => XmlParser.getTextContent(el),
   };
 
   const dom: ProviderAPI["dom"] = {
