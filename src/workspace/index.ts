@@ -2,10 +2,6 @@ import type { ResourceItem } from "../models/types";
 
 declare const document: Document;
 declare const window: Window & { arguments?: any[]; opener?: any };
-declare const localStorage: {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-};
 
 type WorkspaceMode = "academic" | "patent" | "web";
 
@@ -123,6 +119,7 @@ interface WorkspaceUIState {
 
 const STORAGE_KEY = "zrs-workspace-state-v1";
 const root = document.getElementById("workspace-root") as HTMLDivElement | null;
+const fallbackStorage = new Map<string, string>();
 
 const runtime = {
   bridge: null as WorkspaceBridge | null,
@@ -147,16 +144,20 @@ async function initialize(): Promise<void> {
   if (!root) {
     return;
   }
-  const bridge = resolveBridge();
-  if (!bridge) {
-    root.innerHTML =
-      '<div class="ws-card ws-section ws-error">Workspace bridge is unavailable. Re-open this window from Zotero.</div>';
-    return;
+  try {
+    const bridge = resolveBridge();
+    if (!bridge) {
+      root.innerHTML =
+        '<div class="ws-card ws-section ws-error">Workspace bridge is unavailable. Re-open this window from Zotero.</div>';
+      return;
+    }
+    runtime.bridge = bridge;
+    runtime.bootstrap = await bridge.getBootstrapData();
+    runtime.state = loadState(runtime.bootstrap);
+    render();
+  } catch (error) {
+    renderFatalError(error);
   }
-  runtime.bridge = bridge;
-  runtime.bootstrap = await bridge.getBootstrapData();
-  runtime.state = loadState(runtime.bootstrap);
-  render();
 }
 
 function resolveBridge(): WorkspaceBridge | null {
@@ -169,7 +170,7 @@ function resolveBridge(): WorkspaceBridge | null {
 }
 
 function loadState(bootstrap: WorkspaceBootstrapData): WorkspaceUIState {
-  const saved = safeParse(localStorage.getItem(STORAGE_KEY));
+  const saved = safeParse(readStoredState());
   return {
     mode: isMode(saved?.mode) ? saved.mode : "academic",
     queryByMode: {
@@ -431,31 +432,64 @@ function renderProviderList(providers: ProviderDescriptor[], selectedProviderId:
       runtime.state!.mode === "web"
         ? runtime.state!.webProviders.includes(provider.id)
         : selectedProviderId === provider.id;
-    item.innerHTML = `
-      <div class="ws-provider-top">
-        <input type="${runtime.state!.mode === "web" ? "checkbox" : "radio"}" name="ws-provider" ${
-          checked ? "checked" : ""
-        } />
-        <div class="ws-provider-main">
-          <div class="ws-provider-name">${escapeHtml(provider.name)}</div>
-          <div class="ws-provider-desc">${escapeHtml(provider.description)}</div>
-        </div>
-        <span class="ws-badge" style="${provider.status.tone}">${escapeHtml(provider.status.text)}</span>
-      </div>
-      <div class="ws-inline-row" style="margin-top:8px">
-        <button class="ws-mini-btn" data-help="1">${
-          runtime.bootstrap!.locale === "zh" ? "查看帮助" : "Help"
-        }</button>
-        ${
-          runtime.state!.mode === "web"
-            ? `<button class="ws-mini-btn" data-up="1" ${index === 0 ? "disabled" : ""}>↑</button>
-               <button class="ws-mini-btn" data-down="1" ${index === providers.length - 1 ? "disabled" : ""}>↓</button>`
-            : ""
-        }
-      </div>
-    `;
+    const top = document.createElement("div");
+    top.className = "ws-provider-top";
 
-    const selector = item.querySelector('input[name="ws-provider"]') as HTMLInputElement;
+    const selector = document.createElement("input");
+    selector.type = runtime.state!.mode === "web" ? "checkbox" : "radio";
+    selector.name = "ws-provider";
+    selector.checked = checked;
+
+    const main = document.createElement("div");
+    main.className = "ws-provider-main";
+
+    const name = document.createElement("div");
+    name.className = "ws-provider-name";
+    name.textContent = provider.name;
+
+    const desc = document.createElement("div");
+    desc.className = "ws-provider-desc";
+    desc.textContent = provider.description;
+
+    const badge = document.createElement("span");
+    badge.className = "ws-badge";
+    badge.setAttribute("style", provider.status.tone);
+    badge.textContent = provider.status.text;
+
+    main.appendChild(name);
+    main.appendChild(desc);
+    top.appendChild(selector);
+    top.appendChild(main);
+    top.appendChild(badge);
+    item.appendChild(top);
+
+    const actions = document.createElement("div");
+    actions.className = "ws-inline-row";
+    actions.style.marginTop = "8px";
+
+    const helpBtn = document.createElement("button");
+    helpBtn.className = "ws-mini-btn";
+    helpBtn.textContent = runtime.bootstrap!.locale === "zh" ? "查看帮助" : "Help";
+    actions.appendChild(helpBtn);
+
+    let upBtn: HTMLButtonElement | null = null;
+    let downBtn: HTMLButtonElement | null = null;
+    if (runtime.state!.mode === "web") {
+      upBtn = document.createElement("button");
+      upBtn.className = "ws-mini-btn";
+      upBtn.textContent = "↑";
+      upBtn.disabled = index === 0;
+
+      downBtn = document.createElement("button");
+      downBtn.className = "ws-mini-btn";
+      downBtn.textContent = "↓";
+      downBtn.disabled = index === providers.length - 1;
+
+      actions.appendChild(upBtn);
+      actions.appendChild(downBtn);
+    }
+    item.appendChild(actions);
+
     selector.addEventListener("change", () => {
       if (runtime.state!.mode === "web") {
         toggleWebProvider(provider.id, selector.checked);
@@ -467,15 +501,13 @@ function renderProviderList(providers: ProviderDescriptor[], selectedProviderId:
       render();
     });
 
-    (item.querySelector("[data-help='1']") as HTMLButtonElement).addEventListener("click", () => {
+    helpBtn.addEventListener("click", () => {
       runtime.state!.helpScope = "provider";
       runtime.state!.helpProviderId = provider.id;
       persistState();
       renderHelp(provider.id);
     });
 
-    const upBtn = item.querySelector("[data-up='1']") as HTMLButtonElement | null;
-    const downBtn = item.querySelector("[data-down='1']") as HTMLButtonElement | null;
     upBtn?.addEventListener("click", () => moveWebProvider(provider.id, -1));
     downBtn?.addEventListener("click", () => moveWebProvider(provider.id, 1));
 
@@ -1032,10 +1064,12 @@ function renderDetail(item: WorkspaceResultItem | null): void {
     }
   `;
 
-  const select = document.getElementById("ws-detail-collection") as HTMLSelectElement;
-  select.innerHTML = (
-    document.getElementById("ws-collection-select") as HTMLSelectElement
-  ).innerHTML;
+  const select = document.getElementById("ws-detail-collection") as HTMLSelectElement | null;
+  const sourceSelect = document.getElementById("ws-collection-select") as HTMLSelectElement | null;
+  if (!select || !sourceSelect) {
+    return;
+  }
+  select.innerHTML = sourceSelect.innerHTML;
   select.value = runtime.state.selectedCollectionKey;
   select.addEventListener("change", () => {
     runtime.state!.selectedCollectionKey = select.value;
@@ -1043,16 +1077,17 @@ function renderDetail(item: WorkspaceResultItem | null): void {
     renderCollections();
   });
 
-  const tags = document.getElementById("ws-detail-tags") as HTMLInputElement;
+  const tags = document.getElementById("ws-detail-tags") as HTMLInputElement | null;
+  const addButton = document.getElementById("ws-detail-add") as HTMLButtonElement | null;
+  if (!tags || !addButton) {
+    return;
+  }
   tags.addEventListener("input", () => {
     runtime.state!.tagsInput = tags.value;
     persistState();
   });
 
-  (document.getElementById("ws-detail-add") as HTMLButtonElement).addEventListener(
-    "click",
-    () => void advancedAdd(item, tags.value, select.value),
-  );
+  addButton.addEventListener("click", () => void advancedAdd(item, tags.value, select.value));
   (document.getElementById("ws-detail-locate") as HTMLButtonElement | null)?.addEventListener(
     "click",
     () => {
@@ -1066,70 +1101,67 @@ function renderDetail(item: WorkspaceResultItem | null): void {
 
 function bindChrome(): void {
   if (!runtime.bootstrap || !runtime.state) return;
-  (document.getElementById("ws-query-input") as HTMLInputElement).addEventListener(
-    "input",
-    (event) => {
-      runtime.state!.queryByMode[runtime.state!.mode] = (event.target as HTMLInputElement).value;
-      persistState();
-    },
-  );
-  (document.getElementById("ws-run-search") as HTMLButtonElement).addEventListener(
-    "click",
-    () => void runSearch(),
-  );
-  (document.getElementById("ws-clear-results") as HTMLButtonElement).addEventListener(
-    "click",
-    () => {
-      runtime.results = null;
-      runtime.selectedResultId = "";
-      runtime.message = "";
-      render();
-    },
-  );
-  (document.getElementById("ws-collection-select") as HTMLSelectElement).addEventListener(
-    "change",
-    (event) => {
-      runtime.state!.selectedCollectionKey = (event.target as HTMLSelectElement).value;
-      persistState();
-    },
-  );
-  (document.getElementById("ws-tags-input") as HTMLInputElement).addEventListener(
-    "input",
-    (event) => {
-      runtime.state!.tagsInput = (event.target as HTMLInputElement).value;
-      persistState();
-    },
-  );
-  (document.getElementById("ws-fetch-pdf") as HTMLInputElement).addEventListener(
-    "change",
-    (event) => {
-      runtime.state!.fetchPDF = (event.target as HTMLInputElement).checked;
-      persistState();
-    },
-  );
-  (document.getElementById("ws-save-favorite") as HTMLButtonElement).addEventListener(
-    "click",
-    () => {
-      saveFavorite();
-      renderSavedSearches();
-    },
-  );
-  (document.getElementById("ws-help-provider") as HTMLButtonElement).addEventListener(
-    "click",
-    () => {
-      runtime.state!.helpScope = "provider";
-      persistState();
-      renderHelp(runtime.state!.helpProviderId || getCurrentProviderId());
-    },
-  );
-  (document.getElementById("ws-help-overall") as HTMLButtonElement).addEventListener(
-    "click",
-    () => {
-      runtime.state!.helpScope = "overall";
-      persistState();
-      render();
-    },
-  );
+  const queryInput = document.getElementById("ws-query-input") as HTMLInputElement | null;
+  const runSearchButton = document.getElementById("ws-run-search") as HTMLButtonElement | null;
+  const clearResultsButton = document.getElementById("ws-clear-results") as HTMLButtonElement | null;
+  const collectionSelect = document.getElementById("ws-collection-select") as HTMLSelectElement | null;
+  const tagsInput = document.getElementById("ws-tags-input") as HTMLInputElement | null;
+  const fetchPdfInput = document.getElementById("ws-fetch-pdf") as HTMLInputElement | null;
+  const saveFavoriteButton = document.getElementById("ws-save-favorite") as HTMLButtonElement | null;
+  const helpProviderButton = document.getElementById("ws-help-provider") as HTMLButtonElement | null;
+  const helpOverallButton = document.getElementById("ws-help-overall") as HTMLButtonElement | null;
+
+  if (
+    !queryInput ||
+    !runSearchButton ||
+    !clearResultsButton ||
+    !collectionSelect ||
+    !tagsInput ||
+    !fetchPdfInput ||
+    !saveFavoriteButton ||
+    !helpProviderButton ||
+    !helpOverallButton
+  ) {
+    return;
+  }
+
+  queryInput.addEventListener("input", (event) => {
+    runtime.state!.queryByMode[runtime.state!.mode] = (event.target as HTMLInputElement).value;
+    persistState();
+  });
+  runSearchButton.addEventListener("click", () => void runSearch());
+  clearResultsButton.addEventListener("click", () => {
+    runtime.results = null;
+    runtime.selectedResultId = "";
+    runtime.message = "";
+    render();
+  });
+  collectionSelect.addEventListener("change", (event) => {
+    runtime.state!.selectedCollectionKey = (event.target as HTMLSelectElement).value;
+    persistState();
+  });
+  tagsInput.addEventListener("input", (event) => {
+    runtime.state!.tagsInput = (event.target as HTMLInputElement).value;
+    persistState();
+  });
+  fetchPdfInput.addEventListener("change", (event) => {
+    runtime.state!.fetchPDF = (event.target as HTMLInputElement).checked;
+    persistState();
+  });
+  saveFavoriteButton.addEventListener("click", () => {
+    saveFavorite();
+    renderSavedSearches();
+  });
+  helpProviderButton.addEventListener("click", () => {
+    runtime.state!.helpScope = "provider";
+    persistState();
+    renderHelp(runtime.state!.helpProviderId || getCurrentProviderId());
+  });
+  helpOverallButton.addEventListener("click", () => {
+    runtime.state!.helpScope = "overall";
+    persistState();
+    render();
+  });
 }
 
 async function runSearch(): Promise<void> {
@@ -1371,7 +1403,41 @@ function applyPreset(preset: SavedSearchPreset): void {
 
 function persistState(): void {
   if (!runtime.state) return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(runtime.state));
+  writeStoredState(JSON.stringify(runtime.state));
+}
+
+function readStoredState(): string | null {
+  try {
+    return window.localStorage?.getItem(STORAGE_KEY) ?? fallbackStorage.get(STORAGE_KEY) ?? null;
+  } catch {
+    return fallbackStorage.get(STORAGE_KEY) ?? null;
+  }
+}
+
+function writeStoredState(value: string): void {
+  fallbackStorage.set(STORAGE_KEY, value);
+  try {
+    window.localStorage?.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore Gecko storage restrictions in chrome dialogs */
+  }
+}
+
+function renderFatalError(error: unknown): void {
+  if (!root) return;
+  const message =
+    error instanceof Error ? error.message || String(error) : String(error || "Unknown error");
+  root.innerHTML = `
+    <div class="ws-shell">
+      <main class="ws-main">
+        <section class="ws-card ws-section ws-error">
+          <h1 class="ws-title">Workspace failed to initialize</h1>
+          <p class="ws-subtitle">The Resource Search workspace crashed during startup.</p>
+          <pre class="ws-code-block">${escapeHtml(message)}</pre>
+        </section>
+      </main>
+    </div>
+  `;
 }
 
 function appendField(
@@ -1383,16 +1449,22 @@ function appendField(
 ): void {
   const field = document.createElement("div");
   field.className = "ws-field";
-  const inputTag = type === "textarea" ? "textarea" : "input";
-  field.innerHTML = `<label>${escapeHtml(label)}</label><${inputTag}></${inputTag}>`;
-  const input = field.querySelector(inputTag) as HTMLInputElement | HTMLTextAreaElement;
+  const labelEl = document.createElement("label");
+  labelEl.textContent = label;
+  field.appendChild(labelEl);
+
+  const input =
+    type === "textarea"
+      ? (document.createElement("textarea") as HTMLTextAreaElement)
+      : (document.createElement("input") as HTMLInputElement);
   if (type !== "textarea") {
-    input.setAttribute("type", type);
+    (input as HTMLInputElement).type = type;
   }
   input.value = String(value ?? "");
   input.addEventListener("input", () => {
     onChange(type === "number" ? Number(input.value || 0) : input.value);
   });
+  field.appendChild(input);
   container.appendChild(field);
 }
 
@@ -1405,8 +1477,10 @@ function appendSelect(
 ): void {
   const field = document.createElement("div");
   field.className = "ws-field";
-  field.innerHTML = `<label>${escapeHtml(label)}</label><select></select>`;
-  const select = field.querySelector("select") as HTMLSelectElement;
+  const labelEl = document.createElement("label");
+  labelEl.textContent = label;
+  const select = document.createElement("select");
+  field.appendChild(labelEl);
   options.forEach(([optionValue, optionLabel]) => {
     const option = document.createElement("option");
     option.value = optionValue;
@@ -1415,6 +1489,7 @@ function appendSelect(
     select.appendChild(option);
   });
   select.addEventListener("change", () => onChange(select.value));
+  field.appendChild(select);
   container.appendChild(field);
 }
 
@@ -1426,8 +1501,11 @@ function appendCheckbox(
 ): void {
   const wrap = document.createElement("label");
   wrap.className = "ws-chip";
-  wrap.innerHTML = `<input type="checkbox" ${checked ? "checked" : ""} /> ${escapeHtml(label)}`;
-  const input = wrap.querySelector("input") as HTMLInputElement;
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = checked;
+  wrap.appendChild(input);
+  wrap.append(` ${label}`);
   input.addEventListener("change", () => onChange(input.checked));
   container.appendChild(wrap);
 }

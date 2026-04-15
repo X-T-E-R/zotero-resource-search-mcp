@@ -1,7 +1,7 @@
 {
   "name": "zotero-resource-search-mcp",
   "type": "module",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Zotero plugin providing MCP-based academic and web resource search across multiple platforms with direct Zotero integration",
   "config": {
     "addonName": "Zotero Resource Search MCP",

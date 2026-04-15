@@ -224,8 +224,9 @@ class WorkspaceController {
       return null;
     }
 
+    const workspaceUrl = `chrome://${config.addonRef}/content/workspace.html`;
     const win = anchor.openDialog(
-      `${rootURI}content/workspace.html`,
+      workspaceUrl,
       `${config.addonRef}:workspace`,
       "chrome,dialog=no,resizable,centerscreen,width=1440,height=900",
       addon,
