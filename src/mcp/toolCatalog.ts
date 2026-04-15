@@ -165,6 +165,29 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
           },
           description: "Detail sections to include",
         },
+        addToLibrary: {
+          type: "boolean",
+          description:
+            "When true and the patent is not already in Zotero, create the item and sync detail notes/attachments immediately.",
+        },
+        collectionKey: {
+          type: "string",
+          description: "Optional Zotero collection key when addToLibrary=true",
+        },
+        collectionPath: {
+          type: "string",
+          description: "Optional collection path when addToLibrary=true",
+        },
+        tags: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional tags to add when addToLibrary=true",
+        },
+        fetchPDF: {
+          type: "boolean",
+          description:
+            "When syncing to Zotero, attach provider PDF as an attachment. Defaults to true for detail-based patent sync; set false to skip.",
+        },
       },
       required: ["platform", "sourceId"],
     },
@@ -311,6 +334,11 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
       type: "object",
       properties: {
         item: { type: "object", description: "ResourceItem object from search results" },
+        detail: {
+          type: "object",
+          description:
+            "Optional patent detail payload from patent_detail. Claims/description/legal status become notes, and PDF can become an attachment.",
+        },
         url: { type: "string", description: "URL of a resource to add (alternative to item)" },
         collectionKey: {
           type: "string",
@@ -328,7 +356,8 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
         },
         fetchPDF: {
           type: "boolean",
-          description: "Attempt to find and attach the PDF (default from settings)",
+          description:
+            "Attach a PDF. For patents with detail data, provider PDF defaults to on and is queued asynchronously unless set to false.",
         },
       },
     },

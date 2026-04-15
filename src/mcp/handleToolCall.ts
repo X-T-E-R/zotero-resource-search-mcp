@@ -7,6 +7,7 @@ import { secretStore } from "../infra/SecretStore";
 import { getProviderStartupReport } from "../providers/loader";
 import { collectionHelper } from "../zotero/CollectionHelper";
 import { pdfFetcher } from "../zotero/PdfFetcher";
+import { patentDetailBridge } from "../zotero/PatentDetailBridge";
 import { webSearchRouter } from "../providers/web/WebSearchRouter";
 import { logger } from "../infra/Logger";
 import { createHelpSnapshot } from "./helpCatalog";
@@ -172,7 +173,8 @@ async function handleMcpHelp(args: any): Promise<any> {
 }
 
 async function handlePatentDetail(args: any): Promise<any> {
-  const { platform, sourceId, include } = args;
+  const { platform, sourceId, include, addToLibrary, collectionKey, collectionPath, tags, fetchPDF } =
+    args;
 
   if (!platform || typeof platform !== "string") {
     return { error: "platform is required and must be a string" };
@@ -182,7 +184,48 @@ async function handlePatentDetail(args: any): Promise<any> {
   }
 
   try {
-    return await patentDetailAction.execute(platform, sourceId, { include });
+    const result = await patentDetailAction.execute(platform, sourceId, { include });
+    patentDetailBridge.remember(result);
+
+    const syncPdf = fetchPDF !== false;
+    const existing = await patentDetailBridge.findExistingItem(result.item);
+    if (existing) {
+      const sync = await patentDetailBridge.syncToItem(existing.key, result.detail, {
+        attachPdf: syncPdf,
+      });
+      return {
+        ...result,
+        librarySync: {
+          mode: "existing",
+          key: existing.key,
+          title: existing.title,
+          notesCreated: sync.notesCreated,
+          attachmentsCreated: sync.attachmentsCreated,
+          sectionsAdded: sync.sectionsAdded,
+          pdf: sync.pdf,
+        },
+      };
+    }
+
+    if (addToLibrary === true) {
+      const addResult = await addAction.execute({
+        item: result.item,
+        detail: result.detail,
+        collectionKey,
+        collectionPath,
+        tags,
+        fetchPDF: fetchPDF !== false,
+      });
+      return {
+        ...result,
+        librarySync: {
+          mode: "created",
+          ...addResult,
+        },
+      };
+    }
+
+    return result;
   } catch (e) {
     return { error: String(e) };
   }
@@ -290,13 +333,13 @@ async function handleResourceLookup(args: any): Promise<any> {
 }
 
 async function handleResourceAdd(args: any): Promise<any> {
-  const { item, url, collectionKey, collectionPath, tags, fetchPDF } = args;
+  const { item, detail, url, collectionKey, collectionPath, tags, fetchPDF } = args;
 
   if (!item && !url) {
     return { error: "Either item or url must be provided" };
   }
 
-  return addAction.execute({ item, url, collectionKey, collectionPath, tags, fetchPDF });
+  return addAction.execute({ item, detail, url, collectionKey, collectionPath, tags, fetchPDF });
 }
 
 async function handleCollectionList(args: any): Promise<any> {

@@ -10,6 +10,26 @@ export interface DuplicateResult {
 
 export class DuplicateChecker {
   async check(resource: ResourceItem): Promise<DuplicateResult> {
+    if (resource.itemType === "patent") {
+      for (const [field, value] of [
+        ["applicationNumber", resource.applicationNumber],
+        ["patentNumber", resource.patentNumber],
+      ] as const) {
+        const trimmed = value?.trim();
+        if (!trimmed) continue;
+        try {
+          const s = new Zotero.Search({ libraryID: Zotero.Libraries.userLibraryID });
+          s.addCondition(field, "is", trimmed);
+          const ids = await s.search();
+          if (ids.length > 0) {
+            return this.buildResult(ids[0]);
+          }
+        } catch (e) {
+          logger.warn(`${field} duplicate check failed: ${e}`);
+        }
+      }
+    }
+
     if (resource.DOI) {
       try {
         const s = new Zotero.Search({ libraryID: Zotero.Libraries.userLibraryID });

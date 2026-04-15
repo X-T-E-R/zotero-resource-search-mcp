@@ -1,9 +1,10 @@
-import type { ResourceItem } from "../models/types";
+import type { PatentDetailPayload, ResourceItem } from "../models/types";
 import { duplicateChecker } from "../zotero/DuplicateChecker";
 import { translatorBridge } from "../zotero/TranslatorBridge";
 import { itemCreator } from "../zotero/ItemCreator";
 import { collectionHelper } from "../zotero/CollectionHelper";
 import { pdfFetcher } from "../zotero/PdfFetcher";
+import { patentDetailBridge } from "../zotero/PatentDetailBridge";
 import { configProvider } from "../infra/ConfigProvider";
 import { logger } from "../infra/Logger";
 
@@ -15,11 +16,17 @@ export interface AddResult {
   duplicate?: boolean;
   addedToCollection?: boolean;
   pdf?: { ok: boolean; message?: string };
+  patentDetail?: {
+    notesCreated: number;
+    attachmentsCreated: number;
+    sectionsAdded: string[];
+  };
 }
 
 export class AddAction {
   async execute(params: {
     item?: ResourceItem;
+    detail?: PatentDetailPayload;
     url?: string;
     collectionKey?: string;
     collectionPath?: string;
@@ -27,7 +34,15 @@ export class AddAction {
     fetchPDF?: boolean;
   }): Promise<AddResult> {
     const { item, url, tags } = params;
-    const fetchPDF = params.fetchPDF ?? configProvider.getBool("general.fetchPDF", false);
+    const detail =
+      params.detail ??
+      (item?.itemType === "patent" ? patentDetailBridge.recall(item)?.detail : undefined);
+    const fetchPDF =
+      typeof params.fetchPDF === "boolean"
+        ? params.fetchPDF
+        : item?.itemType === "patent" && detail
+          ? true
+          : configProvider.getBool("general.fetchPDF", false);
 
     if (!item && !url) {
       return { ok: false, message: "Either item or url must be provided" };
@@ -63,11 +78,44 @@ export class AddAction {
                   ? `Item already exists, added to new collection`
                   : `Item already exists, failed to add to new collection`,
               };
-              if (fetchPDF) {
+              if (detail && item?.itemType === "patent") {
+                const syncResult = await patentDetailBridge.syncToItem(dupResult.existingKey, detail, {
+                  attachPdf: fetchPDF,
+                });
+                result.patentDetail = {
+                  notesCreated: syncResult.notesCreated,
+                  attachmentsCreated: syncResult.attachmentsCreated,
+                  sectionsAdded: syncResult.sectionsAdded,
+                };
+                if (syncResult.pdf) {
+                  result.pdf = { ok: syncResult.pdf.ok, message: syncResult.pdf.message };
+                }
+              } else if (fetchPDF) {
                 result.pdf = await pdfFetcher.fetchForItem(dupResult.existingKey);
               }
               return result;
             }
+          }
+
+          if (detail && item?.itemType === "patent") {
+            const syncResult = await patentDetailBridge.syncToItem(dupResult.existingKey, detail, {
+              attachPdf: fetchPDF,
+            });
+            return {
+              ok: true,
+              duplicate: true,
+              key: dupResult.existingKey,
+              title: dupResult.existingTitle,
+              message: `Item already exists and patent detail was synchronized`,
+              patentDetail: {
+                notesCreated: syncResult.notesCreated,
+                attachmentsCreated: syncResult.attachmentsCreated,
+                sectionsAdded: syncResult.sectionsAdded,
+              },
+              pdf: syncResult.pdf
+                ? { ok: syncResult.pdf.ok, message: syncResult.pdf.message }
+                : undefined,
+            };
           }
 
           endTimer();
@@ -128,7 +176,32 @@ export class AddAction {
       };
 
       if (fetchPDF && addedKey) {
-        addResult.pdf = await pdfFetcher.fetchForItem(addedKey);
+        if (detail && item?.itemType === "patent") {
+          const syncResult = await patentDetailBridge.syncToItem(addedKey, detail, {
+            attachPdf: fetchPDF,
+          });
+          addResult.patentDetail = {
+            notesCreated: syncResult.notesCreated,
+            attachmentsCreated: syncResult.attachmentsCreated,
+            sectionsAdded: syncResult.sectionsAdded,
+          };
+          if (syncResult.pdf) {
+            addResult.pdf = { ok: syncResult.pdf.ok, message: syncResult.pdf.message };
+          } else {
+            addResult.pdf = await pdfFetcher.fetchForItem(addedKey);
+          }
+        } else {
+          addResult.pdf = await pdfFetcher.fetchForItem(addedKey);
+        }
+      } else if (detail && item?.itemType === "patent" && addedKey) {
+        const syncResult = await patentDetailBridge.syncToItem(addedKey, detail, {
+          attachPdf: false,
+        });
+        addResult.patentDetail = {
+          notesCreated: syncResult.notesCreated,
+          attachmentsCreated: syncResult.attachmentsCreated,
+          sectionsAdded: syncResult.sectionsAdded,
+        };
       }
 
       return addResult;

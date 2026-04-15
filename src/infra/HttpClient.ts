@@ -1,3 +1,5 @@
+import { secretStore } from "./SecretStore";
+
 export interface HttpResponse<T> {
   data: T;
   status: number;
@@ -11,6 +13,22 @@ export interface HttpRequestOptions {
   timeout?: number;
   withCredentials?: boolean;
 }
+
+interface PersistedCookieRecord {
+  name: string;
+  value: string;
+  host: string;
+  path: string;
+  isSecure: boolean;
+  isHttpOnly: boolean;
+  sameSite: number;
+  scheme: number;
+  expiry?: number;
+  persistedUntil?: number;
+}
+
+const COOKIE_STORE_KEY_PREFIX = "http.cookieJar.";
+const SESSION_COOKIE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export class HttpClient {
   private baseURL: string;
@@ -112,6 +130,193 @@ export class HttpClient {
     return headers;
   }
 
+  private getCookieStoreKey(origin: string): string {
+    return `${COOKIE_STORE_KEY_PREFIX}${encodeURIComponent(origin)}`;
+  }
+
+  private readPersistedCookies(origin: string): PersistedCookieRecord[] {
+    try {
+      const raw = secretStore.getString(this.getCookieStoreKey(origin), "");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const now = Math.floor(Date.now() / 1000);
+      const cookies = parsed.filter((entry): entry is PersistedCookieRecord => {
+        if (!entry || typeof entry !== "object") return false;
+        if (typeof entry.name !== "string" || typeof entry.value !== "string") return false;
+        if (typeof entry.host !== "string" || typeof entry.path !== "string") return false;
+        const hardExpiry =
+          typeof entry.expiry === "number"
+            ? entry.expiry
+            : typeof entry.persistedUntil === "number"
+              ? entry.persistedUntil
+              : undefined;
+        return hardExpiry === undefined || hardExpiry > now;
+      });
+      if (cookies.length !== parsed.length) {
+        this.writePersistedCookies(origin, cookies);
+      }
+      return cookies;
+    } catch {
+      return [];
+    }
+  }
+
+  private writePersistedCookies(origin: string, cookies: PersistedCookieRecord[]): void {
+    if (cookies.length === 0) {
+      secretStore.clear(this.getCookieStoreKey(origin));
+      return;
+    }
+    secretStore.setString(this.getCookieStoreKey(origin), JSON.stringify(cookies));
+  }
+
+  private normalizeCookieHost(host: string): string {
+    return host.trim().replace(/^\./, "").toLowerCase();
+  }
+
+  private targetMatchesCookie(target: URL, cookie: PersistedCookieRecord): boolean {
+    const host = this.normalizeCookieHost(cookie.host);
+    const targetHost = target.hostname.toLowerCase();
+    if (!host) return false;
+    const hostMatches = targetHost === host || targetHost.endsWith(`.${host}`);
+    if (!hostMatches) return false;
+    if (cookie.isSecure && target.protocol !== "https:") return false;
+    const cookiePath = cookie.path || "/";
+    return target.pathname.startsWith(cookiePath);
+  }
+
+  private parseSetCookie(
+    url: string,
+    rawCookie: string,
+  ): { cookie: PersistedCookieRecord; expired: boolean } | null {
+    let target: URL;
+    try {
+      target = new URL(url);
+    } catch {
+      return null;
+    }
+
+    const segments = rawCookie
+      .split(";")
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+    const first = segments.shift();
+    if (!first) return null;
+    const nameIndex = first.indexOf("=");
+    if (nameIndex <= 0) return null;
+
+    const name = first.slice(0, nameIndex).trim();
+    const value = first.slice(nameIndex + 1).trim();
+    if (!name) return null;
+
+    let host = target.hostname;
+    let path = "/";
+    let isSecure = false;
+    let isHttpOnly = false;
+    let isSession = true;
+    let expiry: number | undefined;
+    let sameSite = Ci.nsICookie.SAMESITE_LAX;
+    let scheme =
+      target.protocol === "https:" ? Ci.nsICookie.SCHEME_HTTPS : Ci.nsICookie.SCHEME_HTTP;
+
+    for (const segment of segments) {
+      const separator = segment.indexOf("=");
+      const attrKey = (separator >= 0 ? segment.slice(0, separator) : segment)
+        .trim()
+        .toLowerCase();
+      const attrValue = separator >= 0 ? segment.slice(separator + 1).trim() : "";
+
+      switch (attrKey) {
+        case "path":
+          path = attrValue || "/";
+          break;
+        case "domain":
+          host = attrValue || host;
+          break;
+        case "secure":
+          isSecure = true;
+          scheme = Ci.nsICookie.SCHEME_HTTPS;
+          break;
+        case "httponly":
+          isHttpOnly = true;
+          break;
+        case "max-age": {
+          const seconds = Number(attrValue);
+          if (Number.isFinite(seconds)) {
+            isSession = false;
+            expiry = Math.floor(Date.now() / 1000) + seconds;
+          }
+          break;
+        }
+        case "expires": {
+          const ts = Date.parse(attrValue);
+          if (Number.isFinite(ts)) {
+            isSession = false;
+            expiry = Math.floor(ts / 1000);
+          }
+          break;
+        }
+        case "samesite":
+          switch (attrValue.toLowerCase()) {
+            case "strict":
+              sameSite = Ci.nsICookie.SAMESITE_STRICT;
+              break;
+            case "none":
+              sameSite = Ci.nsICookie.SAMESITE_NONE;
+              break;
+            default:
+              sameSite = Ci.nsICookie.SAMESITE_LAX;
+          }
+          break;
+      }
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const normalizedHost = this.normalizeCookieHost(host || target.hostname);
+    const cookie: PersistedCookieRecord = {
+      name,
+      value,
+      host: normalizedHost,
+      path: path || "/",
+      isSecure,
+      isHttpOnly,
+      sameSite,
+      scheme,
+      expiry,
+      persistedUntil: isSession ? now + SESSION_COOKIE_TTL_SECONDS : expiry,
+    };
+
+    const expired = !value || (typeof expiry === "number" && expiry <= now);
+    return { cookie, expired };
+  }
+
+  private updatePersistedCookie(url: string, rawCookie: string): void {
+    let target: URL;
+    try {
+      target = new URL(url);
+    } catch {
+      return;
+    }
+
+    const parsed = this.parseSetCookie(url, rawCookie);
+    if (!parsed) return;
+
+    const cookies = this.readPersistedCookies(target.origin);
+    const next = cookies.filter(
+      (entry) =>
+        !(
+          entry.name === parsed.cookie.name &&
+          this.normalizeCookieHost(entry.host) === this.normalizeCookieHost(parsed.cookie.host) &&
+          entry.path === parsed.cookie.path
+        ),
+    );
+
+    if (!parsed.expired) {
+      next.push(parsed.cookie);
+    }
+    this.writePersistedCookies(target.origin, next);
+  }
+
   private collectXHRResponseHeaders(xhr: XMLHttpRequest): {
     headers: Record<string, string>;
     setCookies: string[];
@@ -153,78 +358,24 @@ export class HttpClient {
     }
 
     for (const rawCookie of setCookies) {
-      const segments = rawCookie
-        .split(";")
-        .map((segment) => segment.trim())
-        .filter(Boolean);
-      const first = segments.shift();
-      if (!first) continue;
-      const nameIndex = first.indexOf("=");
-      if (nameIndex <= 0) continue;
-
-      const name = first.slice(0, nameIndex).trim();
-      const value = first.slice(nameIndex + 1).trim();
-      if (!name) continue;
-
-      let host = target.hostname;
-      let path = "/";
-      let isSecure = false;
-      let isHttpOnly = false;
-      let isSession = true;
-      let expiry = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
-
-      for (const segment of segments) {
-        const separator = segment.indexOf("=");
-        const attrKey = (separator >= 0 ? segment.slice(0, separator) : segment)
-          .trim()
-          .toLowerCase();
-        const attrValue = separator >= 0 ? segment.slice(separator + 1).trim() : "";
-
-        switch (attrKey) {
-          case "path":
-            path = attrValue || "/";
-            break;
-          case "domain":
-            host = attrValue.replace(/^\./, "") || host;
-            break;
-          case "secure":
-            isSecure = true;
-            break;
-          case "httponly":
-            isHttpOnly = true;
-            break;
-          case "max-age": {
-            const seconds = Number(attrValue);
-            if (Number.isFinite(seconds)) {
-              isSession = false;
-              expiry = Math.floor(Date.now() / 1000) + seconds;
-            }
-            break;
-          }
-          case "expires": {
-            const ts = Date.parse(attrValue);
-            if (Number.isFinite(ts)) {
-              isSession = false;
-              expiry = Math.floor(ts / 1000);
-            }
-            break;
-          }
-        }
-      }
+      const parsed = this.parseSetCookie(url, rawCookie);
+      if (!parsed) continue;
+      const { cookie, expired } = parsed;
+      this.updatePersistedCookie(url, rawCookie);
 
       try {
         Services.cookies.add(
-          host,
-          path,
-          name,
-          value,
-          isSecure,
-          isHttpOnly,
-          isSession,
-          expiry,
+          cookie.host,
+          cookie.path,
+          cookie.name,
+          cookie.value,
+          cookie.isSecure,
+          cookie.isHttpOnly,
+          expired ? false : cookie.expiry === undefined,
+          expired ? 0 : cookie.expiry ?? cookie.persistedUntil ?? Math.floor(Date.now() / 1000),
           {},
-          Ci.nsICookie.SAMESITE_LAX,
-          target.protocol === "https:" ? Ci.nsICookie.SCHEME_HTTPS : Ci.nsICookie.SCHEME_HTTP,
+          cookie.sameSite,
+          cookie.scheme,
         );
       } catch {
         /* ignore cookie persistence failures */
@@ -266,7 +417,7 @@ export class HttpClient {
       const sandbox = new CookieSandboxCtor(
         null,
         target.origin,
-        "",
+        this.getCookieHeader(url),
         typeof navigator !== "undefined" ? navigator.userAgent : "",
       );
       this.cookieSandboxes.set(key, sandbox);
@@ -294,7 +445,10 @@ export class HttpClient {
       timeout: timeoutMs,
     });
 
-    const responseHeaders = this.parseXHRHeaders(xhr.getAllResponseHeaders() ?? "");
+    const { headers: responseHeaders, setCookies } = this.collectXHRResponseHeaders(xhr);
+    if (init.withCredentials) {
+      this.persistResponseCookies(url, setCookies);
+    }
     const contentType =
       xhr.getResponseHeader("content-type") ?? responseHeaders["content-type"] ?? "";
     const text = xhr.responseText ?? "";
@@ -316,16 +470,20 @@ export class HttpClient {
   private getCookieHeader(url: string): string {
     try {
       const target = new URL(url);
+      const pairs = new Map<string, string>();
       const cookies = Services.cookies.getCookiesFromHost(target.hostname, {}, true);
-      const pairs = cookies
-        .filter((cookie: nsICookie) => {
-          if (!cookie?.name) return false;
-          if (cookie.isSecure && target.protocol !== "https:") return false;
-          const cookiePath = cookie.path || "/";
-          return target.pathname.startsWith(cookiePath);
-        })
-        .map((cookie: nsICookie) => `${cookie.name}=${cookie.value}`);
-      return pairs.join("; ");
+      for (const cookie of cookies as nsICookie[]) {
+        if (!cookie?.name) continue;
+        if (cookie.isSecure && target.protocol !== "https:") continue;
+        const cookiePath = cookie.path || "/";
+        if (!target.pathname.startsWith(cookiePath)) continue;
+        pairs.set(cookie.name, cookie.value);
+      }
+      for (const cookie of this.readPersistedCookies(target.origin)) {
+        if (!this.targetMatchesCookie(target, cookie)) continue;
+        pairs.set(cookie.name, cookie.value);
+      }
+      return [...pairs.entries()].map(([name, value]) => `${name}=${value}`).join("; ");
     } catch {
       return "";
     }

@@ -66,6 +66,8 @@ export interface PatentDetailResult {
   };
 }
 
+export type PatentDetailPayload = PatentDetailResult["detail"];
+
 export interface SearchOptions {
   maxResults?: number;
   page?: number;
