@@ -1,4 +1,9 @@
-import type { ProviderConfigFieldSchema, ProviderManifest } from "../_sdk/types";
+import type {
+  ProviderConfigFieldSchema,
+  ProviderHelpExample,
+  ProviderManifest,
+  ProviderUsageHelp,
+} from "../_sdk/types";
 
 const ID_RE = /^[a-z][a-z0-9_-]{1,63}$/;
 
@@ -70,6 +75,45 @@ function validateConfigSchema(
   }
 }
 
+function validateHelpExample(example: unknown, index: number): asserts example is ProviderHelpExample {
+  if (!isPlainObject(example)) {
+    throw new ManifestValidationError(`help.examples[${index}] must be an object`);
+  }
+  for (const key of ["title", "titleZh", "description", "descriptionZh", "tool"]) {
+    const value = example[key];
+    if (value !== undefined && typeof value !== "string") {
+      throw new ManifestValidationError(`help.examples[${index}].${key} must be a string`);
+    }
+  }
+  if ("arguments" in example && example.arguments !== undefined && !isPlainObject(example.arguments)) {
+    throw new ManifestValidationError(`help.examples[${index}].arguments must be an object`);
+  }
+}
+
+function validateUsageHelp(help: unknown): asserts help is ProviderUsageHelp {
+  if (!isPlainObject(help)) {
+    throw new ManifestValidationError("help must be an object");
+  }
+  for (const key of ["summary", "summaryZh"]) {
+    const value = help[key];
+    if (value !== undefined && typeof value !== "string") {
+      throw new ManifestValidationError(`help.${key} must be a string`);
+    }
+  }
+  for (const key of ["notes", "notesZh"] as const) {
+    const value = help[key];
+    if (value !== undefined && (!Array.isArray(value) || !value.every((item) => typeof item === "string"))) {
+      throw new ManifestValidationError(`help.${key} must be string[]`);
+    }
+  }
+  if (help.examples !== undefined) {
+    if (!Array.isArray(help.examples)) {
+      throw new ManifestValidationError("help.examples must be an array");
+    }
+    help.examples.forEach((example, index) => validateHelpExample(example, index));
+  }
+}
+
 /**
  * Parse and validate provider manifest.json content.
  */
@@ -128,6 +172,12 @@ export function parseProviderManifest(raw: string): ProviderManifest {
     configSchema = data.configSchema as Record<string, ProviderConfigFieldSchema>;
   }
 
+  let help: ProviderUsageHelp | undefined;
+  if (data.help !== undefined) {
+    validateUsageHelp(data.help);
+    help = data.help as ProviderUsageHelp;
+  }
+
   let allowedGlobalPrefs: string[] | undefined;
   if (data.allowedGlobalPrefs !== undefined) {
     if (!Array.isArray(data.allowedGlobalPrefs)) {
@@ -152,6 +202,18 @@ export function parseProviderManifest(raw: string): ProviderManifest {
       throw new ManifestValidationError("rateLimitPerMinute must be 1..10000");
     }
     rateLimitPerMinute = data.rateLimitPerMinute;
+  }
+
+  let maxResultsLimit: number | undefined;
+  if (data.maxResultsLimit !== undefined) {
+    if (
+      typeof data.maxResultsLimit !== "number" ||
+      data.maxResultsLimit < 1 ||
+      data.maxResultsLimit > 10_000
+    ) {
+      throw new ManifestValidationError("maxResultsLimit must be 1..10000");
+    }
+    maxResultsLimit = data.maxResultsLimit;
   }
 
   let searchTimeoutMs: number | undefined;
@@ -185,9 +247,11 @@ export function parseProviderManifest(raw: string): ProviderManifest {
     sourceType,
     description: typeof data.description === "string" ? data.description : undefined,
     author: typeof data.author === "string" ? data.author : undefined,
+    help,
     minPluginVersion: typeof data.minPluginVersion === "string" ? data.minPluginVersion : undefined,
     permissions: { urls: urls as string[] },
     configSchema,
+    maxResultsLimit,
     rateLimitPerMinute,
     searchTimeoutMs,
     allowedGlobalPrefs,

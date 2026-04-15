@@ -1,4 +1,5 @@
 import { StreamableMCPServer } from "./streamableMCPServer";
+import { createHelpSnapshot } from "../mcp/helpCatalog";
 
 declare let ztoolkit: ZToolkit;
 
@@ -104,6 +105,7 @@ async function readFullRequest(input: any): Promise<string> {
 function parseRequest(raw: string): {
   method: string;
   path: string;
+  query: Record<string, string>;
   headers: Record<string, string>;
   body: string;
 } {
@@ -117,8 +119,11 @@ function parseRequest(raw: string): {
   const rawPath = parts[1] || "/";
 
   let path: string;
+  let query: Record<string, string> = {};
   try {
-    path = new URL(rawPath, "http://127.0.0.1").pathname;
+    const parsed = new URL(rawPath, "http://127.0.0.1");
+    path = parsed.pathname;
+    query = Object.fromEntries(parsed.searchParams.entries());
   } catch {
     path = rawPath;
   }
@@ -140,7 +145,7 @@ function parseRequest(raw: string): {
     body = contentLength > 0 ? rawBody.substring(0, contentLength) : rawBody;
   }
 
-  return { method, path, headers, body };
+  return { method, path, query, headers, body };
 }
 
 interface RouteResponse {
@@ -170,7 +175,7 @@ function sendResponse(output: any, res: RouteResponse): void {
   }
 }
 
-type RouteHandler = (body: string) => Promise<RouteResponse>;
+type RouteHandler = (body: string, query: Record<string, string>) => Promise<RouteResponse>;
 type RouteTable = Record<string, Record<string, RouteHandler>>;
 
 export class HttpServer {
@@ -263,6 +268,8 @@ export class HttpServer {
           contentType: "application/json; charset=utf-8",
           body: JSON.stringify({
             endpoint: "/mcp",
+            helpEndpoint: "/mcp/help",
+            statusEndpoint: "/mcp/status",
             protocol: "MCP (Model Context Protocol)",
             transport: "Streamable HTTP",
             version: "2024-11-05",
@@ -296,6 +303,21 @@ export class HttpServer {
             body: JSON.stringify({ error: "MCP server not initialized", enabled: false }),
           };
         },
+      },
+      "/mcp/help": {
+        GET: async (_body, query) => ({
+          status: 200,
+          statusText: "OK",
+          contentType: "application/json; charset=utf-8",
+          body: JSON.stringify(
+            createHelpSnapshot({
+              topic: query.topic,
+              tool: query.tool,
+              provider: query.provider,
+              locale: query.locale,
+            }),
+          ),
+        }),
       },
     };
   }
@@ -352,7 +374,7 @@ export class HttpServer {
           return;
         }
 
-        const result = await handler(req.body);
+        const result = await handler(req.body, req.query);
         sendResponse(output, result);
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e));

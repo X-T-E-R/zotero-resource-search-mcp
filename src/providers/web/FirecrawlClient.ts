@@ -41,7 +41,7 @@ export class FirecrawlClient implements WebBackend {
 
   async search(opts: {
     query: string;
-    maxResults: number;
+    maxResults?: number;
     categories?: string[];
     includeContent?: boolean;
   }): Promise<WebSearchResponse> {
@@ -49,7 +49,7 @@ export class FirecrawlClient implements WebBackend {
 
     const payload: Record<string, any> = {
       query: opts.query,
-      limit: opts.maxResults,
+      limit: opts.maxResults ?? 5,
     };
     if (opts.categories?.length) {
       payload.categories = opts.categories.map((c) => ({ type: c }));

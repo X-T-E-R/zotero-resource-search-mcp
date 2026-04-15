@@ -67,7 +67,7 @@ export class TavilyClient implements WebBackend {
 
   async search(opts: {
     query: string;
-    maxResults: number;
+    maxResults?: number;
     topic?: string;
     includeAnswer?: boolean;
     includeContent?: boolean;
@@ -80,7 +80,7 @@ export class TavilyClient implements WebBackend {
 
     const payload: Record<string, any> = {
       query: opts.query,
-      max_results: opts.maxResults,
+      max_results: opts.maxResults ?? 5,
       search_depth: opts.includeContent ? "advanced" : "basic",
       topic: opts.topic || "general",
       include_answer: opts.includeAnswer ?? true,

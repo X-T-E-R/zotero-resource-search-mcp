@@ -18,6 +18,7 @@ import type {
   WebResearchResponse,
   WebProviderHealth,
 } from "./types";
+import { resolveScopedMaxResults } from "../sourcePrefs";
 
 export class WebSearchRouter {
   private getOptionalBackend<T extends WebBackend>(id: string): T | undefined {
@@ -80,7 +81,13 @@ export class WebSearchRouter {
     const mySearchProxy = this.getOptionalBackend<MySearchProxyClient>("mysearch");
     if (proxyFirst && mySearchProxy?.isConfigured()) {
       try {
-        return await mySearchProxy.search(opts);
+        return await mySearchProxy.search({
+          ...opts,
+          maxResults: resolveScopedMaxResults({
+            requested: opts.maxResults,
+            configured: configProvider.getNumber("web.mysearch.maxResults", 0),
+          }),
+        });
       } catch (e) {
         logger.warn(`MySearch Proxy failed, falling back to direct: ${e}`);
       }
@@ -108,7 +115,10 @@ export class WebSearchRouter {
     logger.info(`Web search route: ${decision.provider} (${decision.reason})`);
 
     let result: WebSearchResponse;
-    const maxResults = opts.maxResults ?? 5;
+    const maxResults = resolveScopedMaxResults({
+      requested: opts.maxResults,
+      configured: configProvider.getNumber(`web.${decision.provider}.maxResults`, 0),
+    });
 
     switch (decision.provider) {
       case "tavily":

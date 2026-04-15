@@ -44,6 +44,21 @@
       type="string"
     />
     <preference
+      id="extensions.zotero.__addonRef__.general.probeQueryAcademic"
+      name="extensions.zotero.__addonRef__.general.probeQueryAcademic"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.general.probeQueryPatent"
+      name="extensions.zotero.__addonRef__.general.probeQueryPatent"
+      type="string"
+    />
+    <preference
+      id="extensions.zotero.__addonRef__.general.probeQueryWeb"
+      name="extensions.zotero.__addonRef__.general.probeQueryWeb"
+      type="string"
+    />
+    <preference
       id="extensions.zotero.__addonRef__.providers.registryUrl"
       name="extensions.zotero.__addonRef__.providers.registryUrl"
       type="string"
@@ -199,6 +214,11 @@
                   style="font-size: 0.85em"
                   >GitHub</html:a
                 >
+                <hbox align="center" style="margin-top: 8px">
+                  <html:button id="zrs-open-workspace" data-l10n-id="pref-open-workspace-button">
+                    Open Search Workspace
+                  </html:button>
+                </hbox>
               </vbox>
             </hbox>
 
@@ -255,6 +275,39 @@
                   style="max-width: 60px"
                 />
               </hbox>
+              <hbox align="center" style="margin: 6px 0">
+                <html:label
+                  data-l10n-id="pref-general-probe-query-academic"
+                  style="min-width: 120px"
+                />
+                <html:input
+                  type="text"
+                  preference="extensions.zotero.__addonRef__.general.probeQueryAcademic"
+                  placeholder="graph neural networks"
+                  style="flex: 1; max-width: 320px"
+                />
+              </hbox>
+              <hbox align="center" style="margin: 6px 0">
+                <html:label
+                  data-l10n-id="pref-general-probe-query-patent"
+                  style="min-width: 120px"
+                />
+                <html:input
+                  type="text"
+                  preference="extensions.zotero.__addonRef__.general.probeQueryPatent"
+                  placeholder="石墨烯传感器"
+                  style="flex: 1; max-width: 320px"
+                />
+              </hbox>
+              <hbox align="center" style="margin: 6px 0">
+                <html:label data-l10n-id="pref-general-probe-query-web" style="min-width: 120px" />
+                <html:input
+                  type="text"
+                  preference="extensions.zotero.__addonRef__.general.probeQueryWeb"
+                  placeholder="latest llm benchmarks"
+                  style="flex: 1; max-width: 320px"
+                />
+              </hbox>
             </groupbox>
 
             <groupbox>
@@ -286,62 +339,6 @@
               style="color: #555; font-size: 0.9em; margin: 0 0 8px 0"
             />
             <html:div id="zrs-sources-container" style="min-height: 80px" />
-
-            <html:details style="margin-top: 10px">
-              <html:summary
-                style="cursor: pointer; font-weight: bold; font-size: 0.95em"
-                data-l10n-id="pref-academic-apikeys"
-              />
-              <vbox style="padding: 6px 0 2px 12px">
-                <hbox align="center" style="margin: 3px 0">
-                  <html:label data-l10n-id="pref-apikeys-wos" style="min-width: 140px" />
-                  <html:input
-                    type="password"
-                    preference="extensions.zotero.__addonRef__.api.wos.key"
-                    style="flex: 1; max-width: 280px"
-                  />
-                </hbox>
-                <hbox align="center" style="margin: 3px 0">
-                  <html:label data-l10n-id="pref-apikeys-elsevier" style="min-width: 140px" />
-                  <html:input
-                    type="password"
-                    preference="extensions.zotero.__addonRef__.api.elsevier.key"
-                    style="flex: 1; max-width: 280px"
-                  />
-                </hbox>
-                <hbox align="center" style="margin: 3px 0">
-                  <html:label data-l10n-id="pref-apikeys-pubmed" style="min-width: 140px" />
-                  <html:input
-                    type="text"
-                    preference="extensions.zotero.__addonRef__.api.pubmed.key"
-                    style="flex: 1; max-width: 280px"
-                  />
-                </hbox>
-                <hbox align="center" style="margin: 3px 0">
-                  <html:label
-                    data-l10n-id="pref-apikeys-semantic-scholar"
-                    style="min-width: 140px"
-                  />
-                  <html:input
-                    type="text"
-                    preference="extensions.zotero.__addonRef__.api.semanticScholar.key"
-                    style="flex: 1; max-width: 280px"
-                  />
-                </hbox>
-                <hbox align="center" style="margin: 3px 0">
-                  <html:label
-                    data-l10n-id="pref-apikeys-crossref-mailto"
-                    style="min-width: 140px"
-                  />
-                  <html:input
-                    type="text"
-                    preference="extensions.zotero.__addonRef__.api.crossref.mailto"
-                    placeholder="you@example.com"
-                    style="flex: 1; max-width: 280px"
-                  />
-                </hbox>
-              </vbox>
-            </html:details>
           </vbox>
         </tabpanel>
 
@@ -355,17 +352,16 @@
                 style="color: #666; font-size: 0.85em; margin: 0 0 8px 0"
                 data-l10n-id="pref-providers-desc"
               />
-              <html:div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px">
+              <html:div
+                style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px"
+              >
                 <hbox align="center" style="flex-wrap: wrap; gap: 8px">
                   <html:button id="zrs-provider-refresh">Refresh</html:button>
                   <html:button id="zrs-provider-import">Import .zip</html:button>
                   <html:button id="zrs-provider-reload">Reload</html:button>
                 </hbox>
                 <hbox align="center" style="flex-wrap: wrap; gap: 8px">
-                  <html:label
-                    data-l10n-id="pref-providers-registry-url"
-                    style="min-width: 120px"
-                  />
+                  <html:label data-l10n-id="pref-providers-registry-url" style="min-width: 120px" />
                   <html:input
                     type="url"
                     preference="extensions.zotero.__addonRef__.providers.registryUrl"

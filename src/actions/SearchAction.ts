@@ -3,6 +3,8 @@ import { configProvider } from "../infra/ConfigProvider";
 import type { SearchOptions, SearchResult } from "../models/types";
 import { logger } from "../infra/Logger";
 import { getAcademicSourceGuidance } from "../providers/academicSourceGuidance";
+import { PluggableSearchProvider } from "../providers/pluggable/PluggableSearchProvider";
+import { resolveScopedMaxResults } from "../providers/sourcePrefs";
 
 export class SearchAction {
   async execute(
@@ -33,24 +35,23 @@ export class SearchAction {
       "general.defaultSort",
       "relevance",
     ) as SearchOptions["sortBy"];
-    const globalMax = configProvider.getNumber("general.maxResults", 25);
 
     const providerSort = configProvider.getString(`platform.${providerId}.defaultSort`, "");
     const providerMax = configProvider.getNumber(`platform.${providerId}.maxResults`, 0);
+    const provider = providerRegistry.get(providerId);
+    const providerLimit =
+      provider instanceof PluggableSearchProvider ? provider.manifest.maxResultsLimit : undefined;
 
     const effectiveSort = options?.sortBy || providerSort || undefined || globalSort || "relevance";
-
-    const effectiveMax =
-      options?.maxResults && options.maxResults > 0
-        ? options.maxResults
-        : providerMax > 0
-          ? providerMax
-          : globalMax;
 
     return {
       ...options,
       sortBy: effectiveSort as SearchOptions["sortBy"],
-      maxResults: effectiveMax,
+      maxResults: resolveScopedMaxResults({
+        requested: options?.maxResults,
+        configured: providerMax,
+        limit: providerLimit,
+      }),
       page: options?.page ?? 1,
     };
   }
@@ -65,7 +66,9 @@ export class SearchAction {
       const guidance =
         sourceType === "academic"
           ? getAcademicSourceGuidance({
-              locale: String((Zotero as any)?.locale || "").toLowerCase().startsWith("zh")
+              locale: String((Zotero as any)?.locale || "")
+                .toLowerCase()
+                .startsWith("zh")
                 ? "zh"
                 : "en",
               academicProviderCount: 0,

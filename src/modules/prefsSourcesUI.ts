@@ -1,21 +1,45 @@
 import { config } from "../../package.json";
 import pkg from "../../package.json";
-import { getString } from "../utils/locale";
 import type { FluentMessageId } from "../../typings/i10n";
-import { providerRegistry } from "../providers/registry";
+import { secretStore } from "../infra/SecretStore";
+import { getAcademicSourceGuidance } from "../providers/academicSourceGuidance";
 import { getProviderStartupReport } from "../providers/loader";
 import { PluggableSearchProvider } from "../providers/pluggable/PluggableSearchProvider";
-import { webBackendRegistry } from "../providers/web/WebBackendRegistry";
+import { providerRegistry } from "../providers/registry";
+import {
+  clearSourceVerified,
+  getRequiredPlatformConfigKeys,
+  getRequiredWebConfigKeys,
+  getSourceProbeQuery,
+  getSourceVerifiedState,
+  isPlatformConfigured,
+  isWebConfigured,
+  type ProbeSourceType,
+  type SourceScope,
+} from "../providers/sourcePrefs";
+import { probeSource } from "../providers/sourceProbe";
 import type { WebBackend, WebBackendConfigField } from "../providers/web/WebBackend";
-import { secretStore } from "../infra/SecretStore";
+import { webBackendRegistry } from "../providers/web/WebBackendRegistry";
+import { getString } from "../utils/locale";
+import { resolveWorkspaceSourceStatus } from "../workspace/sourceStatus";
 import {
   createAcademicConfigSchema,
   normalizeProviderConfigFields,
   type NormalizedProviderConfigField,
 } from "./providerConfigSchema";
-import { getAcademicSourceGuidance } from "../providers/academicSourceGuidance";
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
+
+interface CardModel {
+  scope: SourceScope;
+  sourceType: ProbeSourceType;
+  id: string;
+  name: string;
+  description: string;
+  fields: NormalizedProviderConfigField[];
+  requiredKeys: string[];
+  sourceLabel: string;
+}
 
 function prefKey(full: string): string {
   return `${config.prefsPrefix}.${full}`;
@@ -93,319 +117,136 @@ function renderIssueList(
   return wrap;
 }
 
-function renderAcademicField(
-  doc: Document,
-  parent: HTMLElement,
-  providerId: string,
+function createWebFields(backend: WebBackend): NormalizedProviderConfigField[] {
+  const mapped = backend.configSchema.map((field) => normalizeWebField(field));
+  return [
+    {
+      key: "enabled",
+      control: "checkbox",
+      type: "boolean",
+      default: true,
+      label: "Enabled",
+      labelZh: "启用",
+      advanced: false,
+    },
+    {
+      key: "maxResults",
+      control: "number",
+      type: "number",
+      default: 0,
+      min: -1,
+      max: 100,
+      label: "Max Results",
+      labelZh: "结果数",
+      advanced: true,
+      description:
+        "0 = use global default, -1 = use this backend maximum, positive numbers override both.",
+    },
+    {
+      key: "probeQuery",
+      control: "text",
+      type: "string",
+      default: "",
+      label: "Probe Query",
+      labelZh: "测活查询",
+      advanced: true,
+      description: "Optional override for this backend's health check search query.",
+    },
+    ...mapped,
+  ];
+}
+
+function normalizeWebField(field: WebBackendConfigField): NormalizedProviderConfigField {
+  return {
+    key: field.key,
+    control: field.type,
+    type: field.type === "checkbox" ? "boolean" : field.type === "select" ? "string" : "string",
+    default: field.type === "checkbox" ? false : "",
+    label: field.label,
+    labelZh: field.labelZh,
+    advanced: field.advanced === true,
+    placeholder: field.placeholder,
+    options: field.options,
+  };
+}
+
+function readFieldValue(
+  model: CardModel,
   field: NormalizedProviderConfigField,
-  lang: "zh" | "en",
-): void {
-  const row = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  row.setAttribute("style", "display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap");
-
-  const label = doc.createElementNS(HTML_NS, "label") as HTMLElement;
-  label.setAttribute("style", "min-width:100px;font-size:0.88em");
-  label.textContent = lang === "zh" && field.labelZh ? field.labelZh : field.label;
-
-  const fullKey = prefKey(`platform.${providerId}.${field.key}`);
-  const logicalKey = `platform.${providerId}.${field.key}`;
-  if (field.secret) {
-    secretStore.registerSecretKey(logicalKey);
-  }
-
+): string | number | boolean {
+  const logicalKey = `${model.scope}.${model.id}.${field.key}`;
   if (field.control === "checkbox") {
-    const checkbox = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
-    checkbox.setAttribute("type", "checkbox");
-    checkbox.checked = prefBool(`platform.${providerId}.${field.key}`, field.default === true);
-    checkbox.addEventListener("change", () => {
-      Zotero.Prefs.set(fullKey, checkbox.checked, true);
-    });
-    row.appendChild(label);
-    row.appendChild(checkbox);
-  } else if (field.control === "select") {
-    const select = doc.createElementNS(HTML_NS, "select") as unknown as HTMLSelectElement;
-    select.setAttribute("style", "max-width:220px;font-size:0.88em");
-    for (const option of field.options ?? []) {
-      const opt = doc.createElementNS(HTML_NS, "option") as unknown as HTMLOptionElement;
-      opt.value = option.value;
-      opt.textContent = option.label;
-      select.appendChild(opt);
-    }
-    const fallback = typeof field.default === "string" ? field.default : "";
-    const current = prefStr(`platform.${providerId}.${field.key}`, fallback);
-    select.value = current;
-    select.addEventListener("change", () => {
-      Zotero.Prefs.set(fullKey, select.value, true);
-    });
-    row.appendChild(label);
-    row.appendChild(select);
-  } else {
-    const input = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
-    input.setAttribute("type", field.control === "password" ? "password" : field.control);
-    input.setAttribute("style", "flex:1;max-width:220px;font-size:0.88em");
-    if (field.placeholder) {
-      input.setAttribute("placeholder", field.placeholder);
-    }
-    if (field.min !== undefined) {
-      input.min = String(field.min);
-    }
-    if (field.max !== undefined) {
-      input.max = String(field.max);
-    }
-    if (field.control === "number") {
-      const fallback = typeof field.default === "number" ? field.default : 0;
-      input.value = String(prefNum(`platform.${providerId}.${field.key}`, fallback));
-      input.addEventListener("change", () => {
-        Zotero.Prefs.set(fullKey, parseInt(input.value, 10) || 0, true);
-      });
-    } else {
-      const fallback = typeof field.default === "string" ? field.default : "";
-      input.value = field.secret
-        ? secretStore.getString(logicalKey, fallback)
-        : prefStr(`platform.${providerId}.${field.key}`, fallback);
-      input.addEventListener("change", () => {
-        if (field.secret) {
-          secretStore.setString(logicalKey, input.value);
-        } else {
-          Zotero.Prefs.set(fullKey, input.value, true);
-        }
-      });
-    }
-    row.appendChild(label);
-    row.appendChild(input);
+    return prefBool(logicalKey, field.default === true);
   }
-
-  parent.appendChild(row);
-
-  if (field.description) {
-    const hint = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-    hint.setAttribute("style", "margin:-2px 0 6px 108px;font-size:0.82em;color:#666");
-    hint.textContent = field.description;
-    parent.appendChild(hint);
+  if (field.control === "number") {
+    return prefNum(logicalKey, typeof field.default === "number" ? field.default : 0);
   }
-}
-
-function renderAcademicCard(
-  doc: Document,
-  provider: PluggableSearchProvider,
-  lang: "zh" | "en",
-): HTMLElement {
-  const wrap = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  wrap.setAttribute(
-    "style",
-    "border:1px solid #ddd;border-radius:6px;padding:8px 10px;margin-bottom:8px;background:#fafafa",
-  );
-
-  const normalizedFields = normalizeProviderConfigFields(
-    createAcademicConfigSchema(provider.manifest),
-  );
-  const enabledField = normalizedFields.find((field) => field.key === "enabled");
-  const detailFields = normalizedFields.filter((field) => field.key !== "enabled");
-  const basicFields = detailFields.filter((field) => !field.advanced);
-  const advancedFields = detailFields.filter((field) => field.advanced);
-  const runtimeStatus = provider.getRuntimeStatus();
-  const statusText = runtimeStatus.available
-    ? lang === "zh"
-      ? "可用"
-      : "Ready"
-    : !runtimeStatus.enabled
-      ? lang === "zh"
-        ? "已禁用"
-        : "Disabled"
-      : !runtimeStatus.configured
-        ? lang === "zh"
-          ? "缺少配置"
-          : "Needs config"
-        : lang === "zh"
-          ? "已注册"
-          : "Registered";
-  const statusTone = runtimeStatus.available
-    ? "background:#e8f7ee;color:#0f6b3d;border:1px solid #b7e2c4"
-    : !runtimeStatus.enabled
-      ? "background:#f3f4f6;color:#555;border:1px solid #dadde3"
-      : !runtimeStatus.configured
-        ? "background:#fff4e5;color:#a35a00;border:1px solid #f1d2a5"
-        : "background:#eef4ff;color:#285ea8;border:1px solid #c9dafc";
-
-  const header = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  header.setAttribute(
-    "style",
-    "display:flex;align-items:flex-start;justify-content:space-between;gap:8px",
-  );
-
-  const left = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  const title = doc.createElementNS(HTML_NS, "strong") as HTMLElement;
-  title.textContent = provider.name;
-  left.appendChild(title);
-
-  const meta = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  meta.setAttribute("style", "font-size:0.82em;color:#666;margin-top:2px");
-  meta.textContent = lang === "zh" ? "已安装 Provider" : "Installed provider";
-  left.appendChild(meta);
-
-  if (!runtimeStatus.configured && runtimeStatus.reason) {
-    const warning = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-    warning.setAttribute("style", "font-size:0.82em;color:#b45309;margin-top:2px");
-    warning.textContent = runtimeStatus.reason;
-    left.appendChild(warning);
-  }
-
-  header.appendChild(left);
-
-  const right = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  right.setAttribute("style", "display:flex;align-items:center;gap:8px;flex-shrink:0");
-  const badge = doc.createElementNS(HTML_NS, "span") as HTMLElement;
-  badge.textContent = statusText;
-  badge.setAttribute(
-    "style",
-    `${statusTone};display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.82em;white-space:nowrap`,
-  );
-  right.appendChild(badge);
-
-  if (enabledField) {
-    const toggle = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
-    toggle.setAttribute("type", "checkbox");
-    toggle.checked = prefBool(
-      `platform.${provider.id}.enabled`,
-      enabledField.default === true || enabledField.default === undefined,
+  if (field.control === "password") {
+    return secretStore.getString(
+      logicalKey,
+      typeof field.default === "string" ? field.default : "",
     );
-    toggle.addEventListener("change", () => {
-      Zotero.Prefs.set(prefKey(`platform.${provider.id}.enabled`), toggle.checked, true);
-    });
-    right.appendChild(toggle);
   }
-  header.appendChild(right);
-
-  wrap.appendChild(header);
-
-  const details = doc.createElementNS(HTML_NS, "details") as unknown as HTMLDetailsElement;
-  details.open = false;
-  details.setAttribute("style", "margin-top:6px");
-  const summary = doc.createElementNS(HTML_NS, "summary") as HTMLElement;
-  summary.textContent = lang === "zh" ? "展开配置" : "Show configuration";
-  details.appendChild(summary);
-
-  const body = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  body.setAttribute("style", "padding:6px 0 0 8px");
-  for (const field of basicFields) {
-    renderAcademicField(doc, body, provider.id, field, lang);
-  }
-
-  if (advancedFields.length) {
-    const advanced = doc.createElementNS(HTML_NS, "details") as unknown as HTMLDetailsElement;
-    advanced.setAttribute("style", "margin-top:4px");
-    const advancedSummary = doc.createElementNS(HTML_NS, "summary") as HTMLElement;
-    advancedSummary.textContent = lang === "zh" ? "高级" : "Advanced";
-    advanced.appendChild(advancedSummary);
-
-    const advancedBody = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-    advancedBody.setAttribute("style", "padding:6px 0 0 8px");
-    for (const field of advancedFields) {
-      renderAcademicField(doc, advancedBody, provider.id, field, lang);
-    }
-    advanced.appendChild(advancedBody);
-    body.appendChild(advanced);
-  }
-
-  details.appendChild(body);
-  wrap.appendChild(details);
-
-  return wrap;
+  return prefStr(logicalKey, typeof field.default === "string" ? field.default : "");
 }
 
-/** Full Zotero preference name (extensions.zotero…). */
-function fieldFullPref(backend: WebBackend, field: WebBackendConfigField): string {
-  if (field.fullPrefKey) {
-    return prefKey(field.fullPrefKey);
-  }
-  return prefKey(`web.${backend.id}.${field.key}`);
-}
-
-function readStrFull(fullPrefName: string, fallback: string): string {
-  const v = Zotero.Prefs.get(fullPrefName, true);
-  if (v === undefined || v === null) {
-    return fallback;
-  }
-  return String(v);
-}
-
-function readBoolFull(fullPrefName: string, fallback: boolean): boolean {
-  const v = Zotero.Prefs.get(fullPrefName, true);
-  if (typeof v === "boolean") {
-    return v;
-  }
-  return fallback;
-}
-
-function appendWebField(
-  doc: Document,
-  parent: HTMLElement,
-  backend: WebBackend,
-  field: WebBackendConfigField,
-  lang: "zh" | "en",
+function writeFieldValue(
+  model: CardModel,
+  field: NormalizedProviderConfigField,
+  value: string | number | boolean,
 ): void {
-  const row = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  row.setAttribute("style", "display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap");
-  const lab = doc.createElementNS(HTML_NS, "label") as HTMLElement;
-  lab.setAttribute("style", "min-width:100px;font-size:0.88em");
-  lab.textContent = lang === "zh" && field.labelZh ? field.labelZh : field.label;
-  const full = fieldFullPref(backend, field);
-  const logicalKey = field.fullPrefKey || `web.${backend.id}.${field.key}`;
-  if (field.type === "password") {
-    secretStore.registerSecretKey(logicalKey);
-  }
-
-  if (field.type === "checkbox") {
-    const cb = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
-    cb.setAttribute("type", "checkbox");
-    cb.checked = readBoolFull(full, false);
-    cb.addEventListener("change", () => {
-      Zotero.Prefs.set(full, cb.checked, true);
-    });
-    row.appendChild(lab);
-    row.appendChild(cb);
-    parent.appendChild(row);
+  const logicalKey = `${model.scope}.${model.id}.${field.key}`;
+  const fullKey = prefKey(logicalKey);
+  if (field.control === "checkbox") {
+    Zotero.Prefs.set(fullKey, Boolean(value), true);
     return;
   }
-
-  if (field.type === "select" && field.options?.length) {
-    const sel = doc.createElementNS(HTML_NS, "select") as unknown as HTMLSelectElement;
-    sel.setAttribute("style", "max-width:220px;font-size:0.88em");
-    for (const option of field.options) {
-      const opt = doc.createElementNS(HTML_NS, "option") as unknown as HTMLOptionElement;
-      opt.value = option.value;
-      opt.textContent = option.label;
-      sel.appendChild(opt);
-    }
-    const def = field.options[0]?.value ?? "";
-    const cur = readStrFull(full, def);
-    sel.value = field.options.some((option) => option.value === cur) ? cur : def;
-    sel.addEventListener("change", () => {
-      Zotero.Prefs.set(full, sel.value, true);
-    });
-    row.appendChild(lab);
-    row.appendChild(sel);
-    parent.appendChild(row);
+  if (field.control === "number") {
+    Zotero.Prefs.set(fullKey, Number(value) || 0, true);
     return;
   }
-
-  const input = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
-  input.setAttribute("type", field.type === "password" ? "password" : "text");
-  input.setAttribute("style", "flex:1;max-width:320px;font-size:0.88em");
-  if (field.placeholder) {
-    input.setAttribute("placeholder", field.placeholder);
+  if (field.control === "password") {
+    secretStore.setString(logicalKey, String(value));
+    return;
   }
-  input.value = field.type === "password" ? secretStore.getString(logicalKey, "") : readStrFull(full, "");
-  input.addEventListener("change", () => {
-    if (field.type === "password") {
-      secretStore.setString(logicalKey, input.value);
-    } else {
-      Zotero.Prefs.set(full, input.value, true);
-    }
-  });
-  row.appendChild(lab);
-  row.appendChild(input);
-  parent.appendChild(row);
+  Zotero.Prefs.set(fullKey, String(value), true);
+}
+
+function getResultsHint(lang: "zh" | "en"): string {
+  return lang === "zh"
+    ? "0 = 使用通用默认值；-1 = 使用当前源最大值；正数 = 显式覆盖。"
+    : "0 = use global default; -1 = use this source maximum; positive numbers override both.";
+}
+
+function getMissingConfigText(lang: "zh" | "en", requiredKeys: string[]): string {
+  if (requiredKeys.length === 0) {
+    return lang === "zh" ? "请补充配置后再测活。" : "Complete the configuration before probing.";
+  }
+  return lang === "zh"
+    ? `请填写必填项：${requiredKeys.join(" / ")}。`
+    : `Fill the required fields: ${requiredKeys.join(" / ")}.`;
+}
+
+function formatVerifiedInfo(
+  lang: "zh" | "en",
+  state: { verifiedAt: string; verifiedQuery: string } | null,
+): string {
+  if (!state) {
+    return "";
+  }
+  const formatted = new Date(state.verifiedAt).toLocaleString(lang === "zh" ? "zh-CN" : "en-US");
+  if (lang === "zh") {
+    return state.verifiedQuery
+      ? `已于 ${formatted} 使用“${state.verifiedQuery}”确认可用。`
+      : `已于 ${formatted} 确认可用。`;
+  }
+  return state.verifiedQuery
+    ? `Verified at ${formatted} with "${state.verifiedQuery}".`
+    : `Verified at ${formatted}.`;
+}
+
+function shouldInvalidateVerification(fieldKey: string): boolean {
+  return !["defaultSort", "maxResults", "probeQuery"].includes(fieldKey);
 }
 
 function setupStaticSecretInputs(doc: Document): void {
@@ -426,88 +267,362 @@ function setupStaticSecretInputs(doc: Document): void {
   }
 }
 
-function renderWebBackendCard(doc: Document, backend: WebBackend, lang: "zh" | "en"): HTMLElement {
+function renderField(
+  doc: Document,
+  body: HTMLElement,
+  model: CardModel,
+  field: NormalizedProviderConfigField,
+  draft: Record<string, unknown>,
+  lang: "zh" | "en",
+  onMutation: (fieldKey: string) => void,
+): void {
+  const row = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+  row.setAttribute("style", "display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap");
+
+  const label = doc.createElementNS(HTML_NS, "label") as HTMLElement;
+  label.setAttribute("style", "min-width:112px;font-size:0.88em");
+  label.textContent = lang === "zh" && field.labelZh ? field.labelZh : field.label;
+
+  if (field.key === "maxResults") {
+    const tip = doc.createElementNS(HTML_NS, "span") as HTMLElement;
+    tip.textContent = "?";
+    tip.setAttribute(
+      "style",
+      "display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;border:1px solid #cbd5e1;color:#475569;font-size:0.78em;cursor:help",
+    );
+    tip.setAttribute("title", getResultsHint(lang));
+    label.appendChild(doc.createTextNode(" "));
+    label.appendChild(tip);
+  }
+
+  const logicalKey = `${model.scope}.${model.id}.${field.key}`;
+  draft[logicalKey] = readFieldValue(model, field);
+
+  if (field.control === "checkbox") {
+    const checkbox = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
+    checkbox.setAttribute("type", "checkbox");
+    checkbox.checked = Boolean(draft[logicalKey]);
+    checkbox.addEventListener("change", () => {
+      draft[logicalKey] = checkbox.checked;
+      writeFieldValue(model, field, checkbox.checked);
+      onMutation(field.key);
+    });
+    row.appendChild(label);
+    row.appendChild(checkbox);
+    body.appendChild(row);
+    return;
+  }
+
+  if (field.control === "select") {
+    const select = doc.createElementNS(HTML_NS, "select") as unknown as HTMLSelectElement;
+    select.setAttribute("style", "max-width:220px;font-size:0.88em");
+    for (const option of field.options ?? []) {
+      const opt = doc.createElementNS(HTML_NS, "option") as unknown as HTMLOptionElement;
+      opt.value = option.value;
+      opt.textContent = option.label;
+      select.appendChild(opt);
+    }
+    select.value = String(draft[logicalKey] ?? "");
+    select.addEventListener("change", () => {
+      draft[logicalKey] = select.value;
+      writeFieldValue(model, field, select.value);
+      onMutation(field.key);
+    });
+    row.appendChild(label);
+    row.appendChild(select);
+    body.appendChild(row);
+    return;
+  }
+
+  const input = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
+  input.setAttribute("type", field.control === "password" ? "password" : field.control);
+  input.setAttribute("style", "flex:1;max-width:280px;font-size:0.88em");
+  if (field.placeholder) {
+    input.setAttribute("placeholder", field.placeholder);
+  }
+  if (field.min !== undefined) {
+    input.min = String(field.min);
+  }
+  if (field.max !== undefined) {
+    input.max = String(field.max);
+  }
+  input.value = String(draft[logicalKey] ?? "");
+  if (field.control === "number") {
+    input.addEventListener("input", () => {
+      draft[logicalKey] = input.value;
+    });
+    input.addEventListener("change", () => {
+      const parsed = parseInt(input.value, 10);
+      const value = Number.isFinite(parsed) ? parsed : 0;
+      draft[logicalKey] = value;
+      input.value = String(value);
+      writeFieldValue(model, field, value);
+      onMutation(field.key);
+    });
+  } else {
+    const applyTextValue = () => {
+      draft[logicalKey] = input.value;
+      writeFieldValue(model, field, input.value);
+      onMutation(field.key);
+    };
+    input.addEventListener("input", applyTextValue);
+    input.addEventListener("change", applyTextValue);
+  }
+
+  row.appendChild(label);
+  row.appendChild(input);
+  body.appendChild(row);
+
+  if (field.description && field.key !== "maxResults") {
+    const hint = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+    hint.setAttribute("style", "margin:-2px 0 6px 120px;font-size:0.82em;color:#666");
+    hint.textContent = field.description;
+    body.appendChild(hint);
+  }
+}
+
+function renderCard(doc: Document, model: CardModel, lang: "zh" | "en"): HTMLElement {
   const wrap = doc.createElementNS(HTML_NS, "div") as HTMLElement;
   wrap.setAttribute(
     "style",
-    "border:1px solid #dde4f0;border-radius:6px;padding:8px 10px;margin-bottom:8px;background:#f8faff",
+    model.scope === "web"
+      ? "border:1px solid #dde4f0;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#f8faff"
+      : "border:1px solid #ddd;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fafafa",
   );
+
+  const draft: Record<string, unknown> = {};
+  const enabledField = model.fields.find((field) => field.key === "enabled");
+  const detailFields = model.fields.filter((field) => field.key !== "enabled");
+  const basicFields = detailFields.filter((field) => !field.advanced);
+  const advancedFields = detailFields.filter((field) => field.advanced);
+  const enabledKey = `${model.scope}.${model.id}.enabled`;
+  draft[enabledKey] = enabledField ? readFieldValue(model, enabledField) : true;
 
   const header = doc.createElementNS(HTML_NS, "div") as HTMLElement;
   header.setAttribute(
     "style",
-    "display:flex;align-items:flex-start;justify-content:space-between;gap:8px",
+    "display:flex;align-items:flex-start;justify-content:space-between;gap:10px",
   );
 
   const left = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  const titleRow = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  titleRow.setAttribute("style", "display:flex;align-items:center;gap:6px;flex-wrap:wrap");
   const title = doc.createElementNS(HTML_NS, "strong") as HTMLElement;
-  title.textContent = backend.name;
-  const status = doc.createElementNS(HTML_NS, "span") as HTMLElement;
-  status.setAttribute("style", "font-size:0.85em");
-  status.textContent = backend.isConfigured() ? "●" : "○";
-  status.setAttribute("title", backend.isConfigured() ? "Ready" : "Not configured");
-  const caps = doc.createElementNS(HTML_NS, "span") as HTMLElement;
-  caps.setAttribute("style", "font-size:0.75em;color:#369");
-  caps.textContent = [...backend.capabilities].join(" · ");
-  titleRow.appendChild(title);
-  titleRow.appendChild(status);
-  titleRow.appendChild(caps);
+  title.textContent = model.name;
+  left.appendChild(title);
+
+  const meta = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+  meta.setAttribute("style", "font-size:0.82em;color:#666;margin-top:2px");
+  meta.textContent = model.sourceLabel;
+  left.appendChild(meta);
 
   const desc = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-  desc.setAttribute("style", "font-size:0.85em;color:#555;margin-top:2px");
-  desc.textContent =
-    lang === "zh" && backend.descriptionZh ? backend.descriptionZh : backend.description;
-  left.appendChild(titleRow);
+  desc.setAttribute("style", "font-size:0.82em;color:#4b5563;margin-top:2px");
+  desc.textContent = model.description;
   left.appendChild(desc);
-
-  const toggle = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
-  toggle.setAttribute("type", "checkbox");
-  toggle.checked = prefBool(`web.${backend.id}.enabled`, true);
-  toggle.addEventListener("change", () => {
-    Zotero.Prefs.set(prefKey(`web.${backend.id}.enabled`), toggle.checked, true);
-  });
-
   header.appendChild(left);
-  header.appendChild(toggle);
+
+  const right = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+  right.setAttribute("style", "display:flex;align-items:center;gap:8px;flex-shrink:0");
+  const badge = doc.createElementNS(HTML_NS, "span") as HTMLElement;
+  badge.setAttribute(
+    "style",
+    "display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.82em;white-space:nowrap",
+  );
+  right.appendChild(badge);
+
+  if (enabledField) {
+    const toggle = doc.createElementNS(HTML_NS, "input") as unknown as HTMLInputElement;
+    toggle.setAttribute("type", "checkbox");
+    toggle.checked = Boolean(draft[enabledKey]);
+    toggle.addEventListener("change", () => {
+      draft[enabledKey] = toggle.checked;
+      writeFieldValue(model, enabledField, toggle.checked);
+      if (!toggle.checked) {
+        clearSourceVerified(model.scope, model.id);
+      }
+      updateStatus();
+    });
+    right.appendChild(toggle);
+  }
+  header.appendChild(right);
   wrap.appendChild(header);
 
-  const basic = backend.configSchema.filter((field) => !field.advanced);
-  const advanced = backend.configSchema.filter((field) => field.advanced);
+  const statusInfo = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+  statusInfo.setAttribute("style", "font-size:0.82em;color:#666;margin-top:6px");
+  wrap.appendChild(statusInfo);
 
-  if (basic.length) {
-    const details = doc.createElementNS(HTML_NS, "details") as unknown as HTMLDetailsElement;
-    details.open = false;
-    details.setAttribute("style", "margin-top:6px");
-    const summary = doc.createElementNS(HTML_NS, "summary") as HTMLElement;
-    summary.textContent = lang === "zh" ? "展开配置" : "Show configuration";
-    details.appendChild(summary);
-    const box = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-    box.setAttribute("style", "padding:6px 0 0 8px");
-    for (const field of basic) {
-      appendWebField(doc, box, backend, field, lang);
+  const actions = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+  actions.setAttribute(
+    "style",
+    "display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px",
+  );
+  const probeButton = doc.createElementNS(HTML_NS, "button") as HTMLButtonElement;
+  probeButton.textContent = lang === "zh" ? "测活" : "Probe";
+  probeButton.setAttribute(
+    "style",
+    "padding:2px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer",
+  );
+  actions.appendChild(probeButton);
+
+  const probeHint = doc.createElementNS(HTML_NS, "span") as HTMLElement;
+  probeHint.setAttribute("style", "font-size:0.82em;color:#666");
+  actions.appendChild(probeHint);
+  wrap.appendChild(actions);
+
+  const details = doc.createElementNS(HTML_NS, "details") as unknown as HTMLDetailsElement;
+  details.open = false;
+  details.setAttribute("style", "margin-top:8px");
+  const summary = doc.createElementNS(HTML_NS, "summary") as HTMLElement;
+  summary.textContent = lang === "zh" ? "展开配置" : "Show configuration";
+  details.appendChild(summary);
+
+  const body = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+  body.setAttribute("style", "padding:8px 0 0 8px");
+
+  const mutationHandler = (fieldKey: string) => {
+    if (shouldInvalidateVerification(fieldKey)) {
+      clearSourceVerified(model.scope, model.id);
     }
-    details.appendChild(box);
-    wrap.appendChild(details);
+    updateStatus();
+  };
+
+  for (const field of basicFields) {
+    renderField(doc, body, model, field, draft, lang, mutationHandler);
   }
 
-  if (advanced.length) {
-    const details = doc.createElementNS(HTML_NS, "details") as unknown as HTMLDetailsElement;
-    details.setAttribute("style", "margin-top:4px");
-    const summary = doc.createElementNS(HTML_NS, "summary") as HTMLElement;
-    summary.textContent = lang === "zh" ? "高级" : "Advanced";
-    details.appendChild(summary);
-    const box = doc.createElementNS(HTML_NS, "div") as HTMLElement;
-    box.setAttribute("style", "padding:6px 0 0 8px");
-    for (const field of advanced) {
-      appendWebField(doc, box, backend, field, lang);
+  if (advancedFields.length) {
+    const advanced = doc.createElementNS(HTML_NS, "details") as unknown as HTMLDetailsElement;
+    advanced.setAttribute("style", "margin-top:6px");
+    const advancedSummary = doc.createElementNS(HTML_NS, "summary") as HTMLElement;
+    advancedSummary.textContent = lang === "zh" ? "高级" : "Advanced";
+    advanced.appendChild(advancedSummary);
+
+    const advancedBody = doc.createElementNS(HTML_NS, "div") as HTMLElement;
+    advancedBody.setAttribute("style", "padding:8px 0 0 8px");
+    for (const field of advancedFields) {
+      renderField(doc, advancedBody, model, field, draft, lang, mutationHandler);
     }
-    details.appendChild(box);
-    wrap.appendChild(details);
+    advanced.appendChild(advancedBody);
+    body.appendChild(advanced);
   }
 
+  details.appendChild(body);
+  wrap.appendChild(details);
+
+  let busy = false;
+  let message = "";
+  let messageTone: "neutral" | "error" | "success" = "neutral";
+
+  const updateStatus = () => {
+    const enabled = Boolean(draft[enabledKey]);
+    const configured =
+      model.scope === "platform"
+        ? isPlatformConfigured(model.id, draft)
+        : isWebConfigured(model.id, draft);
+    const verifiedState =
+      enabled && configured ? getSourceVerifiedState(model.scope, model.id) : null;
+    const status = resolveWorkspaceSourceStatus(lang, enabled, configured, !!verifiedState);
+    badge.textContent = status.text;
+    badge.setAttribute(
+      "style",
+      `${status.tone};display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.82em;white-space:nowrap`,
+    );
+
+    const probeQuery = getSourceProbeQuery(model.scope, model.id, model.sourceType, draft);
+    probeButton.disabled = busy || !enabled || !configured || !probeQuery;
+    probeButton.style.opacity = probeButton.disabled ? "0.6" : "1";
+    probeButton.style.cursor = probeButton.disabled ? "not-allowed" : "pointer";
+
+    if (!enabled) {
+      statusInfo.textContent = lang === "zh" ? "当前源已关闭。" : "This source is disabled.";
+    } else if (!configured) {
+      statusInfo.textContent = getMissingConfigText(lang, model.requiredKeys);
+    } else if (verifiedState) {
+      statusInfo.textContent = formatVerifiedInfo(lang, verifiedState);
+    } else {
+      statusInfo.textContent =
+        lang === "zh"
+          ? "配置已齐全，可执行测活确认源是否可用。"
+          : "Configuration looks complete. Run a probe to confirm availability.";
+    }
+
+    if (message) {
+      probeHint.textContent = message;
+      probeHint.style.color =
+        messageTone === "error" ? "#b91c1c" : messageTone === "success" ? "#166534" : "#666";
+    } else if (!probeQuery) {
+      probeHint.textContent =
+        lang === "zh"
+          ? "请先在通用设置或当前源高级设置中填写测活查询。"
+          : "Set a probe query in General settings or this source's Advanced section.";
+      probeHint.style.color = "#666";
+    } else {
+      probeHint.textContent =
+        lang === "zh" ? `当前测活查询：${probeQuery}` : `Current probe query: ${probeQuery}`;
+      probeHint.style.color = "#666";
+    }
+  };
+
+  probeButton.addEventListener("click", async () => {
+    busy = true;
+    messageTone = "neutral";
+    message = lang === "zh" ? "正在测活..." : "Probing...";
+    updateStatus();
+
+    try {
+      const result = await probeSource({
+        scope: model.scope,
+        id: model.id,
+        sourceType: model.sourceType,
+        draft,
+      });
+      messageTone = "success";
+      message = lang === "zh" ? `测活成功：${result.query}` : `Probe succeeded: ${result.query}`;
+    } catch (error) {
+      clearSourceVerified(model.scope, model.id);
+      messageTone = "error";
+      message = error instanceof Error ? error.message : String(error);
+    } finally {
+      busy = false;
+      updateStatus();
+    }
+  });
+
+  updateStatus();
   return wrap;
+}
+
+function renderProviderCard(
+  doc: Document,
+  provider: PluggableSearchProvider,
+  lang: "zh" | "en",
+): HTMLElement {
+  const model: CardModel = {
+    scope: "platform",
+    sourceType: provider.sourceType,
+    id: provider.id,
+    name: provider.name,
+    description:
+      provider.manifest.description ?? (lang === "zh" ? "已安装 Provider" : "Installed provider"),
+    fields: normalizeProviderConfigFields(createAcademicConfigSchema(provider.manifest)),
+    requiredKeys: getRequiredPlatformConfigKeys(provider.id),
+    sourceLabel: lang === "zh" ? "外部 provider" : "External provider",
+  };
+  return renderCard(doc, model, lang);
+}
+
+function renderWebCard(doc: Document, backend: WebBackend, lang: "zh" | "en"): HTMLElement {
+  const model: CardModel = {
+    scope: "web",
+    sourceType: "web",
+    id: backend.id,
+    name: backend.name,
+    description:
+      lang === "zh" && backend.descriptionZh ? backend.descriptionZh : backend.description,
+    fields: createWebFields(backend),
+    requiredKeys: getRequiredWebConfigKeys(backend.id),
+    sourceLabel: [...backend.capabilities].join(" · "),
+  };
+  return renderCard(doc, model, lang);
 }
 
 export function setupPrefsSourcesUI(win: Window): void {
@@ -521,7 +636,7 @@ export function setupPrefsSourcesUI(win: Window): void {
       try {
         el.setAttribute("label", getString(tabKeys[i]));
       } catch {
-        /* keep default label from XHTML */
+        /* keep default label */
       }
     }
   }
@@ -555,39 +670,28 @@ export function setupPrefsSourcesUI(win: Window): void {
   const lang = getLang();
   const report = getProviderStartupReport();
   setupStaticSecretInputs(doc);
+
   const guidance = getAcademicSourceGuidance({
     locale: lang,
     academicProviderCount: report.academic.length,
     registryUrl: prefStr("providers.registryUrl", ""),
   });
+
   const academicProviders = providerRegistry
     .getAll()
     .filter(
       (provider): provider is PluggableSearchProvider =>
-        provider instanceof PluggableSearchProvider,
+        provider instanceof PluggableSearchProvider && provider.sourceType === "academic",
     )
-    .filter((provider) => provider.sourceType === "academic")
-    .sort((a, b) => {
-      const statusA = a.getRuntimeStatus();
-      const statusB = b.getRuntimeStatus();
-      if (statusA.available !== statusB.available) return statusA.available ? -1 : 1;
-      if (statusA.enabled !== statusB.enabled) return statusA.enabled ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const patentProviders = providerRegistry
     .getAll()
     .filter(
       (provider): provider is PluggableSearchProvider =>
-        provider instanceof PluggableSearchProvider,
+        provider instanceof PluggableSearchProvider && provider.sourceType === "patent",
     )
-    .filter((provider) => provider.sourceType === "patent")
-    .sort((a, b) => {
-      const statusA = a.getRuntimeStatus();
-      const statusB = b.getRuntimeStatus();
-      if (statusA.available !== statusB.available) return statusA.available ? -1 : 1;
-      if (statusA.enabled !== statusB.enabled) return statusA.enabled ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (guidance.needsAttention) {
     container.appendChild(renderIssueList(doc, guidance.title, guidance.details, "info"));
@@ -606,18 +710,8 @@ export function setupPrefsSourcesUI(win: Window): void {
       doc,
       "p",
       lang === "zh"
-        ? "学术源通过外部 provider 包提供。可在 Manage 页配置源仓库 URL、检查仓库更新，或直接导入 zip。"
-        : "Academic sources come from external provider packages. Use the Manage tab to set a provider repository URL, check the registry, or import a zip.",
-      "color:#666;font-size:0.85em;margin:0 0 8px 0",
-    ),
-  );
-  container.appendChild(
-    createBlock(
-      doc,
-      "p",
-      lang === "zh"
-        ? `当前已加载 ${report.academic.length} 个学术源，其中 ${report.academic.filter((entry) => entry.available).length} 个可直接使用。卡片默认折叠，按需展开配置。`
-        : `${report.academic.length} academic providers are loaded, and ${report.academic.filter((entry) => entry.available).length} are ready. Cards are collapsed by default to save space.`,
+        ? `当前已加载 ${report.academic.length} 个学术源，其中 ${report.academic.filter((entry) => entry.available).length} 个可直接搜索。`
+        : `${report.academic.length} academic providers are loaded, and ${report.academic.filter((entry) => entry.available).length} are currently searchable.`,
       "color:#4b5563;font-size:0.82em;margin:0 0 10px 0",
     ),
   );
@@ -630,7 +724,7 @@ export function setupPrefsSourcesUI(win: Window): void {
     container.appendChild(
       renderIssueList(
         doc,
-        lang === "zh" ? "Provider 启动/加载异常" : "Provider startup / load issues",
+        lang === "zh" ? "学术源加载异常" : "Academic provider load issues",
         academicIssues,
       ),
     );
@@ -640,9 +734,7 @@ export function setupPrefsSourcesUI(win: Window): void {
     container.appendChild(
       renderIssueList(
         doc,
-        lang === "zh"
-          ? "当前没有已加载的学术源"
-          : "No academic sources are currently loaded",
+        lang === "zh" ? "当前没有已加载的学术源" : "No academic sources are currently loaded",
         [
           lang === "zh"
             ? "请到 Manage 页填写源仓库 URL 后点击“检查仓库更新”，或直接导入 provider zip。"
@@ -653,7 +745,7 @@ export function setupPrefsSourcesUI(win: Window): void {
     );
   } else {
     for (const provider of academicProviders) {
-      container.appendChild(renderAcademicCard(doc, provider, lang));
+      container.appendChild(renderProviderCard(doc, provider, lang));
     }
   }
 
@@ -670,18 +762,8 @@ export function setupPrefsSourcesUI(win: Window): void {
       doc,
       "p",
       lang === "zh"
-        ? "专利源同样通过外部 provider 包提供；返回的结果会标准化为可直接写入 Zotero patent 的条目。"
-        : "Patent sources also come from external provider packages and return normalized items that can be written into Zotero patent entries.",
-      "color:#666;font-size:0.85em;margin:0 0 8px 0",
-    ),
-  );
-  container.appendChild(
-    createBlock(
-      doc,
-      "p",
-      lang === "zh"
-        ? `当前已加载 ${report.patent.length} 个专利源，其中 ${report.patent.filter((entry) => entry.available).length} 个可直接使用。`
-        : `${report.patent.length} patent providers are loaded, and ${report.patent.filter((entry) => entry.available).length} are ready.`,
+        ? `当前已加载 ${report.patent.length} 个专利源，其中 ${report.patent.filter((entry) => entry.available).length} 个可直接搜索。`
+        : `${report.patent.length} patent providers are loaded, and ${report.patent.filter((entry) => entry.available).length} are currently searchable.`,
       "color:#4b5563;font-size:0.82em;margin:0 0 10px 0",
     ),
   );
@@ -693,7 +775,7 @@ export function setupPrefsSourcesUI(win: Window): void {
     container.appendChild(
       renderIssueList(
         doc,
-        lang === "zh" ? "Patent provider 启动/加载异常" : "Patent provider startup / load issues",
+        lang === "zh" ? "专利源加载异常" : "Patent provider load issues",
         patentIssues,
       ),
     );
@@ -714,7 +796,7 @@ export function setupPrefsSourcesUI(win: Window): void {
     );
   } else {
     for (const provider of patentProviders) {
-      container.appendChild(renderAcademicCard(doc, provider, lang));
+      container.appendChild(renderProviderCard(doc, provider, lang));
     }
   }
 
@@ -742,14 +824,12 @@ export function setupPrefsSourcesUI(win: Window): void {
     .map((entry) => `${entry.id}: ${entry.error}`);
   if (webIssues.length) {
     container.appendChild(
-      renderIssueList(doc, lang === "zh" ? "Web backend 异常" : "Web backend issues", webIssues),
+      renderIssueList(doc, lang === "zh" ? "网页后端异常" : "Web backend issues", webIssues),
     );
   }
 
-  for (const backend of webBackendRegistry
-    .getAll()
-    .sort((a, b) => Number(b.isConfigured()) - Number(a.isConfigured()) || a.name.localeCompare(b.name))) {
-    container.appendChild(renderWebBackendCard(doc, backend, lang));
+  for (const backend of webBackendRegistry.getAll().sort((a, b) => a.name.localeCompare(b.name))) {
+    container.appendChild(renderWebCard(doc, backend, lang));
   }
 
   const note = doc.createElementNS(HTML_NS, "p") as HTMLElement;

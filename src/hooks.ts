@@ -8,8 +8,52 @@ import { initProviders } from "./providers/init";
 import { getProviderStartupReport } from "./providers/loader";
 import { getPref } from "./utils/prefs";
 import { getAcademicSourceGuidance } from "./providers/academicSourceGuidance";
+import { workspaceController } from "./workspace/controller";
 
 let missingAcademicSourceReminderShown = false;
+const WORKSPACE_MENU_ID = "zrs-workspace-menuitem";
+
+function getToolsMenuPopup(doc: Document): Element | null {
+  const candidates = ["menu_ToolsPopup", "menuToolsPopup", "menu-tools-popup"];
+  for (const id of candidates) {
+    const match = doc.getElementById(id);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
+function registerWorkspaceMenu(win: _ZoteroTypes.MainWindow): void {
+  const doc = win.document;
+  if (doc.getElementById(WORKSPACE_MENU_ID)) {
+    return;
+  }
+  const popup = getToolsMenuPopup(doc);
+  if (!popup) {
+    Zotero.debug("[ResourceSearch] Unable to find Tools menu popup for workspace entry");
+    return;
+  }
+
+  const menuitem = ztoolkit.UI.createElement(doc, "menuitem", {
+    id: WORKSPACE_MENU_ID,
+    namespace: "xul",
+    attributes: {
+      label: getStartupLang() === "zh" ? "Resource Search 工作台" : "Resource Search Workspace",
+    },
+    listeners: [
+      {
+        type: "command",
+        listener: () => workspaceController.openWindow(win),
+      },
+    ],
+  });
+  popup.appendChild(menuitem);
+}
+
+function unregisterWorkspaceMenu(win: Window): void {
+  win.document.getElementById(WORKSPACE_MENU_ID)?.remove();
+}
 
 function getStartupLang(): "zh" | "en" {
   try {
@@ -150,9 +194,11 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   win.MozXULElement.insertFTLIfNeeded(`${addon.data.config.addonRef}-addon.ftl`);
   win.MozXULElement.insertFTLIfNeeded(`${addon.data.config.addonRef}-preferences.ftl`);
+  registerWorkspaceMenu(win);
 }
 
 async function onMainWindowUnload(_win: Window): Promise<void> {
+  unregisterWorkspaceMenu(_win);
   ztoolkit.unregisterAll();
 }
 

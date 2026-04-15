@@ -1,4 +1,9 @@
-import type { PatentDetailResult, ResourceItem, SearchOptions, SearchResult } from "../../models/types";
+import type {
+  PatentDetailResult,
+  ResourceItem,
+  SearchOptions,
+  SearchResult,
+} from "../../models/types";
 
 /** HTTP response from provider HTTP helpers */
 export interface ProviderHttpResponse<T = unknown> {
@@ -80,11 +85,14 @@ export interface ProviderManifest {
   sourceType: "web" | "academic" | "patent";
   description?: string;
   author?: string;
+  help?: ProviderUsageHelp;
   minPluginVersion?: string;
   permissions: {
     urls: string[];
   };
   configSchema?: Record<string, ProviderConfigFieldSchema>;
+  /** Optional hard limit used when UI/config requests `maxResults = -1`. */
+  maxResultsLimit?: number;
   /** Optional: requests per minute for api.rateLimit (default 60) */
   rateLimitPerMinute?: number;
   /** Search timeout in ms (default 60000) */
@@ -107,6 +115,23 @@ export interface ProviderConfigFieldSchema {
   secret?: boolean;
   min?: number;
   max?: number;
+}
+
+export interface ProviderHelpExample {
+  title?: string;
+  titleZh?: string;
+  description?: string;
+  descriptionZh?: string;
+  tool?: string;
+  arguments?: Record<string, unknown>;
+}
+
+export interface ProviderUsageHelp {
+  summary?: string;
+  summaryZh?: string;
+  notes?: string[];
+  notesZh?: string[];
+  examples?: ProviderHelpExample[];
 }
 
 export interface LoadedProviderSource {

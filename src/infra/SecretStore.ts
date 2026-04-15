@@ -17,6 +17,7 @@ const STATIC_SECRET_KEYS = new Set([
 ]);
 
 const dynamicSecretKeys = new Set<string>();
+const volatileSecretValues = new Map<string, string>();
 
 function fullPrefName(key: string): string {
   return `${config.prefsPrefix}.${key}`;
@@ -64,12 +65,18 @@ function clearLegacyPrefValue(key: string): void {
 export type SecretStorageBackend = "loginManager" | "prefsFallback";
 
 class SecretStore {
+  private matchesSecretPattern(key: string): boolean {
+    return /\.(?:apiKey|password|token|secret)$/i.test(key);
+  }
+
   registerSecretKey(key: string): void {
     dynamicSecretKeys.add(key);
   }
 
   isSecretKey(key: string): boolean {
-    return STATIC_SECRET_KEYS.has(key) || dynamicSecretKeys.has(key);
+    return (
+      STATIC_SECRET_KEYS.has(key) || dynamicSecretKeys.has(key) || this.matchesSecretPattern(key)
+    );
   }
 
   getBackend(): SecretStorageBackend {
@@ -88,6 +95,11 @@ class SecretStore {
       return getLegacyPrefValue(key) || defaultValue;
     }
 
+    if (volatileSecretValues.has(key)) {
+      const value = volatileSecretValues.get(key) ?? "";
+      return value || defaultValue;
+    }
+
     const loginManager = getLoginManager();
     if (loginManager) {
       try {
@@ -95,6 +107,7 @@ class SecretStore {
           .findLogins(SECRET_ORIGIN, "", SECRET_REALM)
           .find((login) => login.username === key);
         if (existing?.password) {
+          volatileSecretValues.set(key, existing.password);
           return existing.password;
         }
       } catch {
@@ -115,9 +128,15 @@ class SecretStore {
 
   setString(key: string, value: string): void {
     this.registerSecretKey(key);
+    volatileSecretValues.set(key, value);
     const loginManager = getLoginManager();
     if (!loginManager) {
-      setLegacyPrefValue(key, value);
+      if (value) {
+        setLegacyPrefValue(key, value);
+      } else {
+        clearLegacyPrefValue(key);
+        volatileSecretValues.delete(key);
+      }
       return;
     }
 
@@ -128,11 +147,21 @@ class SecretStore {
       if (existing) {
         if (!value) {
           loginManager.removeLogin(existing);
+          volatileSecretValues.delete(key);
         } else {
           loginManager.modifyLogin(existing, createLoginInfo(key, value));
         }
       } else if (value) {
-        void loginManager.addLoginAsync(createLoginInfo(key, value));
+        setLegacyPrefValue(key, value);
+        void loginManager
+          .addLoginAsync(createLoginInfo(key, value))
+          .then(() => {
+            clearLegacyPrefValue(key);
+          })
+          .catch(() => {
+            /* ignore */
+          });
+        return;
       }
       clearLegacyPrefValue(key);
     } catch {
@@ -141,6 +170,7 @@ class SecretStore {
   }
 
   clear(key: string): void {
+    volatileSecretValues.delete(key);
     const loginManager = getLoginManager();
     if (loginManager) {
       try {

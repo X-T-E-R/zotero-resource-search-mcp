@@ -40,7 +40,7 @@ export class ExaClient implements WebBackend {
 
   async search(opts: {
     query: string;
-    maxResults: number;
+    maxResults?: number;
     includeDomains?: string[];
     excludeDomains?: string[];
     includeContent?: boolean;
@@ -49,7 +49,7 @@ export class ExaClient implements WebBackend {
 
     const payload: Record<string, any> = {
       query: opts.query,
-      numResults: opts.maxResults,
+      numResults: opts.maxResults ?? 10,
     };
     if (opts.includeContent) {
       payload.text = true;

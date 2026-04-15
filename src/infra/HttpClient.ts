@@ -16,6 +16,7 @@ export class HttpClient {
   private baseURL: string;
   private defaultHeaders: Record<string, string>;
   private timeout: number;
+  private cookieSandboxes = new Map<string, Zotero.CookieSandbox>();
 
   constructor(options?: { baseURL?: string; timeout?: number; headers?: Record<string, string> }) {
     this.baseURL = (options?.baseURL ?? "").replace(/\/+$/, "");
@@ -98,6 +99,238 @@ export class HttpClient {
     return parts.join("&");
   }
 
+  private parseXHRHeaders(rawHeaders: string): Record<string, string> {
+    const headers: Record<string, string> = {};
+    for (const line of rawHeaders.split(/\r?\n/)) {
+      const idx = line.indexOf(":");
+      if (idx <= 0) continue;
+      const key = line.slice(0, idx).trim().toLowerCase();
+      const value = line.slice(idx + 1).trim();
+      if (!key) continue;
+      headers[key] = headers[key] ? `${headers[key]}, ${value}` : value;
+    }
+    return headers;
+  }
+
+  private collectXHRResponseHeaders(xhr: XMLHttpRequest): {
+    headers: Record<string, string>;
+    setCookies: string[];
+  } {
+    const headers = this.parseXHRHeaders(xhr.getAllResponseHeaders() ?? "");
+    const setCookies: string[] = [];
+
+    try {
+      const channel = (xhr as any).channel;
+      if (channel && typeof channel.visitResponseHeaders === "function") {
+        channel.visitResponseHeaders({
+          visitHeader: (name: string, value: string) => {
+            const key = name.toLowerCase();
+            headers[key] = headers[key] ? `${headers[key]}, ${value}` : value;
+            if (key === "set-cookie") {
+              setCookies.push(value);
+            }
+          },
+        });
+      }
+    } catch {
+      const fallback = xhr.getResponseHeader("Set-Cookie");
+      if (fallback) {
+        setCookies.push(fallback);
+      }
+    }
+
+    return { headers, setCookies };
+  }
+
+  private persistResponseCookies(url: string, setCookies: string[]): void {
+    if (setCookies.length === 0) return;
+
+    let target: URL;
+    try {
+      target = new URL(url);
+    } catch {
+      return;
+    }
+
+    for (const rawCookie of setCookies) {
+      const segments = rawCookie
+        .split(";")
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+      const first = segments.shift();
+      if (!first) continue;
+      const nameIndex = first.indexOf("=");
+      if (nameIndex <= 0) continue;
+
+      const name = first.slice(0, nameIndex).trim();
+      const value = first.slice(nameIndex + 1).trim();
+      if (!name) continue;
+
+      let host = target.hostname;
+      let path = "/";
+      let isSecure = false;
+      let isHttpOnly = false;
+      let isSession = true;
+      let expiry = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+
+      for (const segment of segments) {
+        const separator = segment.indexOf("=");
+        const attrKey = (separator >= 0 ? segment.slice(0, separator) : segment)
+          .trim()
+          .toLowerCase();
+        const attrValue = separator >= 0 ? segment.slice(separator + 1).trim() : "";
+
+        switch (attrKey) {
+          case "path":
+            path = attrValue || "/";
+            break;
+          case "domain":
+            host = attrValue.replace(/^\./, "") || host;
+            break;
+          case "secure":
+            isSecure = true;
+            break;
+          case "httponly":
+            isHttpOnly = true;
+            break;
+          case "max-age": {
+            const seconds = Number(attrValue);
+            if (Number.isFinite(seconds)) {
+              isSession = false;
+              expiry = Math.floor(Date.now() / 1000) + seconds;
+            }
+            break;
+          }
+          case "expires": {
+            const ts = Date.parse(attrValue);
+            if (Number.isFinite(ts)) {
+              isSession = false;
+              expiry = Math.floor(ts / 1000);
+            }
+            break;
+          }
+        }
+      }
+
+      try {
+        Services.cookies.add(
+          host,
+          path,
+          name,
+          value,
+          isSecure,
+          isHttpOnly,
+          isSession,
+          expiry,
+          {},
+          Ci.nsICookie.SAMESITE_LAX,
+          target.protocol === "https:" ? Ci.nsICookie.SCHEME_HTTPS : Ci.nsICookie.SCHEME_HTTP,
+        );
+      } catch {
+        /* ignore cookie persistence failures */
+      }
+    }
+  }
+
+  private extractFetchSetCookies(headers: Headers): string[] {
+    try {
+      const getter = (headers as any).getSetCookie;
+      if (typeof getter === "function") {
+        const values = getter.call(headers);
+        if (Array.isArray(values)) {
+          return values.filter((value) => typeof value === "string" && value.trim());
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const merged = headers.get("set-cookie");
+    return merged ? [merged] : [];
+  }
+
+  private getCookieSandbox(url: string): Zotero.CookieSandbox | undefined {
+    try {
+      const target = new URL(url);
+      const key = target.origin;
+      const existing = this.cookieSandboxes.get(key);
+      if (existing) {
+        return existing;
+      }
+      const CookieSandboxCtor = (Zotero as any).CookieSandbox as
+        | (new (browser: unknown, uri: string | URL, cookieData: string, userAgent: string) => Zotero.CookieSandbox)
+        | undefined;
+      if (!CookieSandboxCtor) {
+        return undefined;
+      }
+      const sandbox = new CookieSandboxCtor(
+        null,
+        target.origin,
+        "",
+        typeof navigator !== "undefined" ? navigator.userAgent : "",
+      );
+      this.cookieSandboxes.set(key, sandbox);
+      return sandbox;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async requestViaZoteroHttp<T>(
+    url: string,
+    init: {
+      method: string;
+      headers: Record<string, string>;
+      body?: string;
+      withCredentials?: boolean;
+    },
+    timeoutMs: number,
+  ): Promise<HttpResponse<T>> {
+    const xhr = await Zotero.HTTP.request(init.method, url, {
+      body: init.body,
+      headers: init.headers,
+      cookieSandbox: init.withCredentials ? this.getCookieSandbox(url) : undefined,
+      responseType: "text",
+      timeout: timeoutMs,
+    });
+
+    const responseHeaders = this.parseXHRHeaders(xhr.getAllResponseHeaders() ?? "");
+    const contentType =
+      xhr.getResponseHeader("content-type") ?? responseHeaders["content-type"] ?? "";
+    const text = xhr.responseText ?? "";
+    let data: any;
+    try {
+      data = contentType.includes("application/json") ? JSON.parse(text) : text;
+    } catch {
+      data = text;
+    }
+
+    return {
+      data: data as T,
+      status: xhr.status,
+      statusText: xhr.statusText,
+      headers: responseHeaders,
+    };
+  }
+
+  private getCookieHeader(url: string): string {
+    try {
+      const target = new URL(url);
+      const cookies = Services.cookies.getCookiesFromHost(target.hostname, {}, true);
+      const pairs = cookies
+        .filter((cookie: nsICookie) => {
+          if (!cookie?.name) return false;
+          if (cookie.isSecure && target.protocol !== "https:") return false;
+          const cookiePath = cookie.path || "/";
+          return target.pathname.startsWith(cookiePath);
+        })
+        .map((cookie: nsICookie) => `${cookie.name}=${cookie.value}`);
+      return pairs.join("; ");
+    } catch {
+      return "";
+    }
+  }
+
   private async request<T>(
     url: string,
     init: {
@@ -131,6 +364,10 @@ export class HttpClient {
     }
 
     try {
+      if (init.withCredentials && typeof (Zotero as any)?.HTTP?.request === "function") {
+        return this.requestViaZoteroHttp<T>(url, init, timeoutMs);
+      }
+
       const fetchFn =
         typeof fetch !== "undefined"
           ? fetch
@@ -142,35 +379,46 @@ export class HttpClient {
         return this.requestViaXHR<T>(url, init, timeoutMs);
       }
 
-      const response = await fetchFn(url, fetchOptions);
+      try {
+        const response = await fetchFn(url, fetchOptions);
 
-      const responseHeaders: Record<string, string> = {};
-      response.headers.forEach((value: string, key: string) => {
-        responseHeaders[key] = value;
-      });
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value: string, key: string) => {
+          responseHeaders[key] = value;
+        });
+        if (init.withCredentials) {
+          this.persistResponseCookies(url, this.extractFetchSetCookies(response.headers));
+        }
 
-      const contentType = response.headers.get("content-type") ?? "";
-      let data: any;
-      if (contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        data = await response.text();
+        const contentType = response.headers.get("content-type") ?? "";
+        let data: any;
+        if (contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          data = await response.text();
+        }
+
+        if (!response.ok) {
+          throw new HttpError(
+            `HTTP ${response.status}: ${response.statusText}`,
+            response.status,
+            data,
+          );
+        }
+
+        return {
+          data: data as T,
+          status: response.status,
+          statusText: response.statusText,
+          headers: responseHeaders,
+        };
+      } catch (error) {
+        if (!init.withCredentials) {
+          throw error;
+        }
       }
 
-      if (!response.ok) {
-        throw new HttpError(
-          `HTTP ${response.status}: ${response.statusText}`,
-          response.status,
-          data,
-        );
-      }
-
-      return {
-        data: data as T,
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders,
-      };
+      return this.requestViaXHR<T>(url, init, timeoutMs);
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -192,6 +440,17 @@ export class HttpClient {
       xhr.timeout = timeoutMs;
       xhr.withCredentials = Boolean(init.withCredentials);
 
+      const cookieHeader =
+        init.withCredentials && !("Cookie" in init.headers) && !("cookie" in init.headers)
+          ? this.getCookieHeader(url)
+          : "";
+      if (cookieHeader) {
+        init.headers = {
+          ...init.headers,
+          Cookie: cookieHeader,
+        };
+      }
+
       for (const [key, value] of Object.entries(init.headers)) {
         try {
           xhr.setRequestHeader(key, value);
@@ -201,7 +460,10 @@ export class HttpClient {
       }
 
       xhr.onload = () => {
-        const contentType = xhr.getResponseHeader("content-type") ?? "";
+        const { headers: responseHeaders, setCookies } = this.collectXHRResponseHeaders(xhr);
+        this.persistResponseCookies(url, setCookies);
+        const contentType =
+          xhr.getResponseHeader("content-type") ?? responseHeaders["content-type"] ?? "";
         const text = xhr.responseText ?? "";
         let data: any;
         try {
@@ -219,7 +481,7 @@ export class HttpClient {
           data: data as T,
           status: xhr.status,
           statusText: xhr.statusText,
-          headers: {},
+          headers: responseHeaders,
         });
       };
 

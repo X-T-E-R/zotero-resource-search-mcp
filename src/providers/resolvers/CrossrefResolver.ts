@@ -20,7 +20,10 @@ export class CrossrefResolver implements MetadataResolver {
       return null;
     }
 
-    const mailto = configProvider.getString("api.crossref.mailto", "paper-search-mcp@example.com");
+    const mailto = configProvider.getString(
+      "platform.crossref.mailto",
+      configProvider.getString("api.crossref.mailto", "paper-search-mcp@example.com"),
+    );
 
     try {
       const response = await this.http.get<any>(`/${encodeURIComponent(doi)}`, {

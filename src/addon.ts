@@ -3,6 +3,7 @@ import { HttpServer, httpServer } from "./modules/httpServer";
 import { serverPreferences } from "./modules/serverPreferences";
 import hooks from "./hooks";
 import { createZToolkit } from "./utils/ztoolkit";
+import { workspaceController } from "./workspace/controller";
 
 class Addon {
   public data: {
@@ -17,6 +18,9 @@ class Addon {
     };
     prefs?: {
       window: Window;
+    };
+    workspace?: {
+      window?: Window | null;
     };
   };
   public hooks: typeof hooks;
@@ -38,6 +42,7 @@ class Addon {
       stopServer: () => {
         addon.data.httpServer?.stop();
       },
+      workspace: workspaceController,
     };
   }
 }

@@ -4,7 +4,8 @@ pref-tab-manage = Manage
 
 pref-header-title = Zotero Resource Search MCP
 pref-header-homepage = GitHub
-pref-sources-intro = Configure academic provider packages and web backends here. Shared API keys are below. Install sources from the Manage tab.
+pref-open-workspace-button = Open Search Workspace
+pref-sources-intro = Configure each academic source, patent source, and web backend directly here. Credentials and probes now live inside each source card; install more sources from the Manage tab.
 pref-sources-ext-note = More sources: import a .zip or use a provider repository on the Manage tab. User packages live under profile/zotero-resource-search/providers/.
 pref-logging-title = Logging
 
@@ -14,6 +15,9 @@ pref-general-fetchpdf =
 pref-general-default-sort = Default Sort:
 pref-general-max-results = Max Results:
 pref-general-log-level = Log Level:
+pref-general-probe-query-academic = Academic Probe Query:
+pref-general-probe-query-patent = Patent Probe Query:
+pref-general-probe-query-web = Web Probe Query:
 
 pref-server-title = MCP Server
 pref-server-enabled =

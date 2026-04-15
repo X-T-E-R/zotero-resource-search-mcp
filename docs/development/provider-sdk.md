@@ -29,6 +29,7 @@ Validated by [`parseProviderManifest`](../../src/providers/manifest/validate.ts)
 | `permissions.urls`   | yes      | URL patterns allowed for `api.http` (e.g. `https://api.example.com/*`).                                                                                                                                 |
 | `minPluginVersion`   | no       | Minimum plugin semver for load.                                                                                                                                                                         |
 | `configSchema`       | no       | Keys under `platform.<id>.*` in prefs (boolean / string / number). Supports optional UI hints such as `label`, `labelZh`, `description`, `advanced`, `placeholder`, `secret`, `min`, `max`, and `enum`. |
+| `help`               | no       | User-facing usage/help metadata for `mcp_help`, `/mcp/help`, and exported plugin SKILL.md. Supports localized summary, notes, and examples.                                                             |
 | `allowedGlobalPrefs` | no       | Full pref keys the bundle may read via `api.getGlobalPref` (e.g. `api.wos.key`).                                                                                                                        |
 | `rateLimitPerMinute` | no       | Default 60.                                                                                                                                                                                             |
 | `searchTimeoutMs`    | no       | Default 60000.                                                                                                                                                                                          |
@@ -56,6 +57,16 @@ Example (from arXiv):
       "labelZh": "排序方向",
       "advanced": true
     }
+  },
+  "help": {
+    "summaryZh": "用于 arXiv 论文检索。",
+    "examples": [
+      {
+        "titleZh": "基础检索",
+        "tool": "academic_search",
+        "arguments": { "platform": "arxiv", "query": "graph neural networks", "maxResults": 5 }
+      }
+    ]
   },
   "rateLimitPerMinute": 120
 }
@@ -91,6 +102,20 @@ The Sources tab now renders academic provider settings from `configSchema` direc
 - `enum` — render string input as a select
 
 The plugin still injects common academic fields (`enabled`, `defaultSort`, `maxResults`) even if you omit them from your manifest.
+
+### `help` metadata
+
+Provider packages can describe their own usage so the plugin can surface it consistently in:
+
+- `mcp_help`
+- `GET /mcp/help`
+- exported / installed `SKILL.md`
+
+Recommended fields:
+
+- `summary` / `summaryZh`
+- `notes` / `notesZh`
+- `examples[]` with `tool`, `arguments`, and optional localized title/description
 
 - `api.getGlobalPref*` — only keys listed in `allowedGlobalPrefs`.
 - `api.log.*`

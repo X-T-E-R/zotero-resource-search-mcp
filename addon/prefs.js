@@ -10,6 +10,9 @@ pref("general.fetchPDF", false);
 pref("general.defaultSort", "relevance");
 pref("general.maxResults", 25);
 pref("general.logLevel", "info");
+pref("general.probeQueryAcademic", "");
+pref("general.probeQueryPatent", "");
+pref("general.probeQueryWeb", "");
 
 // ── API Keys (shared) ──
 pref("api.wos.key", "");

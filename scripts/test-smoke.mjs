@@ -64,7 +64,8 @@ async function main() {
 
   const toolNames = toolCatalog.getCanonicalToolNames();
   assert(Array.isArray(toolNames), "getCanonicalToolNames() must return an array");
-  assert(toolNames.length === 10, `Expected 10 canonical tools, got ${toolNames.length}`);
+  assert(toolNames.length === 11, `Expected 11 canonical tools, got ${toolNames.length}`);
+  assert(toolNames.includes("mcp_help"), "Canonical tools must include mcp_help");
   assert(toolNames.includes("academic_search"), "Canonical tools must include academic_search");
   assert(toolNames.includes("patent_search"), "Canonical tools must include patent_search");
   assert(toolNames.includes("patent_detail"), "Canonical tools must include patent_detail");

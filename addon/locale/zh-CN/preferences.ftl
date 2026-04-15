@@ -4,7 +4,8 @@ pref-tab-manage = 管理
 
 pref-header-title = Zotero Resource Search MCP
 pref-header-homepage = GitHub
-pref-sources-intro = 在此配置学术 provider 包与网页后端；共享 API 密钥见下方。更多源请到「管理」页安装。
+pref-open-workspace-button = 打开搜索工作台
+pref-sources-intro = 在此直接配置每个学术源、专利源和网页后端。凭据与测活都内聚在各自卡片中；更多源请到「管理」页安装。
 pref-sources-ext-note = 更多源：在「管理」页导入 .zip 或填写 provider 源仓库。用户包位于配置目录/zotero-resource-search/providers/。
 pref-logging-title = 日志
 
@@ -14,6 +15,9 @@ pref-general-fetchpdf =
 pref-general-default-sort = 默认排序：
 pref-general-max-results = 结果数：
 pref-general-log-level = 日志：
+pref-general-probe-query-academic = 论文测活查询：
+pref-general-probe-query-patent = 专利测活查询：
+pref-general-probe-query-web = 网页测活查询：
 
 pref-server-title = MCP 服务器
 pref-server-enabled =

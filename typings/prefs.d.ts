@@ -14,6 +14,9 @@ declare namespace _ZoteroTypes {
       "general.defaultSort": string;
       "general.maxResults": number;
       "general.logLevel": string;
+      "general.probeQueryAcademic": string;
+      "general.probeQueryPatent": string;
+      "general.probeQueryWeb": string;
       "api.wos.key": string;
       "api.pubmed.key": string;
       "api.crossref.mailto": string;

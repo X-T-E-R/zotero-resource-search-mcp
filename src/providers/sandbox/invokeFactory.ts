@@ -39,11 +39,9 @@ function injectApiIntoSandbox(Cu: any, sandbox: any, api: ProviderAPI): void {
     key: string,
     fn: (...args: Args) => Result,
   ) => {
-    Cu.exportFunction(
-      (...args: Args) => cloneResultIntoSandbox(Cu, sandbox, fn(...args)),
-      parent,
-      { defineAs: key },
-    );
+    Cu.exportFunction((...args: Args) => cloneResultIntoSandbox(Cu, sandbox, fn(...args)), parent, {
+      defineAs: key,
+    });
   };
 
   const exportAsync = <Args extends unknown[], Result>(
@@ -51,8 +49,27 @@ function injectApiIntoSandbox(Cu: any, sandbox: any, api: ProviderAPI): void {
     key: string,
     fn: (...args: Args) => Promise<Result>,
   ) => {
+    const sandboxPromise = sandbox.Promise as PromiseConstructor;
     Cu.exportFunction(
-      async (...args: Args) => cloneResultIntoSandbox(Cu, sandbox, await fn(...args)),
+      (...args: Args) => {
+        const executor = Cu.exportFunction(
+          (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+            void fn(...args)
+              .then((result) => {
+                try {
+                  resolve(cloneResultIntoSandbox(Cu, sandbox, sanitizeResult(result)));
+                } catch (error) {
+                  reject(error instanceof Error ? error.message : String(error));
+                }
+              })
+              .catch((error) => {
+                reject(error instanceof Error ? error.message : String(error));
+              });
+          },
+          sandbox,
+        );
+        return new sandboxPromise(executor);
+      },
       parent,
       { defineAs: key },
     );
@@ -112,6 +129,110 @@ return {
 })()`;
 }
 
+function buildProviderMethodEvalSource(method: "search" | "getDetail", callKey: string): string {
+  return `(async () => {
+const callState = globalThis["${callKey}"];
+if (!callState || !callState.bridge) {
+  throw new Error("Missing sandbox call bridge");
+}
+const bridge = callState.bridge;
+const arg0 = callState.arg0;
+const arg1 = callState.arg1;
+const provider = globalThis.__zrs_provider;
+try {
+  const result = await provider.${method}(arg0, arg1);
+  const serialized = typeof result === "undefined" ? "null" : JSON.stringify(result);
+  bridge.resolve(serialized);
+} catch (error) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? error.message
+      : String(error);
+  bridge.reject(String(message));
+} finally {
+  try {
+    delete globalThis["${callKey}"];
+  } catch {
+    globalThis["${callKey}"] = undefined;
+  }
+}
+})();`;
+}
+
+function invokeProviderMethod<T>(
+  Cu: any,
+  sandbox: any,
+  manifest: ProviderManifest,
+  method: "search" | "getDetail",
+  arg0: unknown,
+  arg1: unknown,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const callKey = `__zrs_call_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const settle = (callback: (value: any) => void, value: any) => {
+      if (settled) return;
+      settled = true;
+      try {
+        callback(value);
+      } finally {
+        try {
+          delete sandbox[callKey];
+        } catch {
+          try {
+            sandbox[callKey] = undefined;
+          } catch {
+            /* ignore cleanup failures */
+          }
+        }
+      }
+    };
+
+    const bridge = Cu.createObjectIn(sandbox);
+    Cu.exportFunction(
+      (serialized: string) => {
+        try {
+          const parsed = JSON.parse(serialized) as T;
+          settle(resolve, sanitizeResult(parsed));
+        } catch {
+          settle(reject, new Error(`Failed to decode ${method} result for ${manifest.id}`));
+        }
+      },
+      bridge,
+      { defineAs: "resolve" },
+    );
+    Cu.exportFunction(
+      (message: unknown) => {
+        settle(reject, new Error(String(message)));
+      },
+      bridge,
+      { defineAs: "reject" },
+    );
+
+    const callState = Cu.createObjectIn(sandbox);
+    callState.bridge = bridge;
+    callState.arg0 = cloneResultIntoSandbox(Cu, sandbox, arg0);
+    callState.arg1 = cloneResultIntoSandbox(Cu, sandbox, arg1);
+    sandbox[callKey] = callState;
+
+    try {
+      Cu.evalInSandbox(buildProviderMethodEvalSource(method, callKey), sandbox, {
+        filename: `provider-${manifest.id}-${method}.js`,
+        lineNumber: 1,
+      });
+    } catch (error) {
+      settle(
+        reject,
+        new Error(
+          `${method}() failed (${manifest.id}): ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        ),
+      );
+    }
+  });
+}
+
 /**
  * Evaluate provider bundle in a Gecko sandbox and invoke createProvider(api).
  */
@@ -154,9 +275,7 @@ export function invokeProviderFactory(
     if (message.includes("Missing __zrs_exports.createProvider")) {
       throw new Error(`Missing __zrs_exports.createProvider in bundle: ${manifest.id}`);
     }
-    throw new Error(
-      `createProvider() failed (${manifest.id}): ${message}`,
-    );
+    throw new Error(`createProvider() failed (${manifest.id}): ${message}`);
   }
 
   if (!implMeta?.hasSearch) {
@@ -165,17 +284,7 @@ export function invokeProviderFactory(
 
   return {
     async search(query: string, options?: SearchOptions): Promise<SearchResult> {
-      sandbox.__zrs_query = cloneResultIntoSandbox(Cu, sandbox, query);
-      sandbox.__zrs_options = cloneResultIntoSandbox(Cu, sandbox, options);
-      const raw = (await Cu.evalInSandbox(
-        "__zrs_provider.search(__zrs_query, __zrs_options)",
-        sandbox,
-        {
-          filename: `provider-${manifest.id}-search.js`,
-          lineNumber: 1,
-        },
-      )) as SearchResult;
-      return sanitizeResult(raw);
+      return invokeProviderMethod<SearchResult>(Cu, sandbox, manifest, "search", query, options);
     },
     async getDetail(
       sourceId: string,
@@ -184,17 +293,14 @@ export function invokeProviderFactory(
       if (!implMeta?.hasGetDetail) {
         throw new Error(`Provider ${manifest.id} does not implement getDetail()`);
       }
-      sandbox.__zrs_sourceId = cloneResultIntoSandbox(Cu, sandbox, sourceId);
-      sandbox.__zrs_detailOptions = cloneResultIntoSandbox(Cu, sandbox, options);
-      const raw = (await Cu.evalInSandbox(
-        "__zrs_provider.getDetail(__zrs_sourceId, __zrs_detailOptions)",
+      return invokeProviderMethod<PatentDetailResult>(
+        Cu,
         sandbox,
-        {
-          filename: `provider-${manifest.id}-detail.js`,
-          lineNumber: 1,
-        },
-      )) as PatentDetailResult;
-      return sanitizeResult(raw) as PatentDetailResult;
+        manifest,
+        "getDetail",
+        sourceId,
+        options,
+      );
     },
   };
 }

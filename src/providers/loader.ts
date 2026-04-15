@@ -27,6 +27,7 @@ import {
   type WebBackendRegistrationResult,
 } from "./web/registerBuiltinWebBackends";
 import { webBackendRegistry } from "./web/WebBackendRegistry";
+import { isPlatformConfigured, migrateLegacyProviderPrefs } from "./sourcePrefs";
 
 export interface ProviderStartupEntry {
   id: string;
@@ -142,19 +143,17 @@ function extraAvailabilityFor(manifest: ProviderManifest): ProviderAvailabilityC
   switch (manifest.id) {
     case "wos":
       return {
-        check: () => !!configProvider.getString("api.wos.key"),
+        check: () => isPlatformConfigured("wos"),
         reason: "Missing Web of Science API key",
       };
     case "scopus":
       return {
-        check: () => !!configProvider.getString("api.elsevier.key"),
+        check: () => isPlatformConfigured("scopus"),
         reason: "Missing Elsevier API key",
       };
     case "patentstar":
       return {
-        check: () =>
-          !!configProvider.getString("platform.patentstar.loginName") &&
-          !!configProvider.getString("platform.patentstar.password"),
+        check: () => isPlatformConfigured("patentstar"),
         reason: "Missing PatentStar login credentials",
       };
     default:
@@ -242,6 +241,7 @@ function recordWebBackendResults(results: WebBackendRegistrationResult[]): void 
 export async function loadAllProviders(): Promise<void> {
   providerRegistry.clearSearchProviders();
   resetStartupState();
+  migrateLegacyProviderPrefs();
 
   const merged = new Map<
     string,

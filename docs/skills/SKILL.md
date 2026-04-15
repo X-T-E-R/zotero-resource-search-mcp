@@ -1,18 +1,15 @@
 # Zotero Resource Search MCP
 
-> **Extensibility:** Academic `platform` IDs come from currently loaded provider packages. Install them from a provider repository or custom zip packages. See [Provider SDK](../development/provider-sdk.md).
+这个技能文档面向会调用 MCP 的 IDE / Agent。它对应 Zotero 插件里本地启动的 MCP 服务，用来检索论文、专利、网页内容，并把结果写入 Zotero。
 
-Use this skill when the user asks to search for academic papers, web resources, look up papers by DOI/PMID/arXiv ID/ISBN, extract URL content, add items to their Zotero library, list Zotero collections, fetch PDFs, or perform web research. This skill operates via a local MCP server running inside the Zotero plugin.
+## 连接方式
 
-## Connection
+- Endpoint: `http://127.0.0.1:23121/mcp`
+- Help: `http://127.0.0.1:23121/mcp/help`
+- Status: `http://127.0.0.1:23121/mcp/status`
+- 协议：JSON-RPC 2.0 over HTTP POST
 
-- **Endpoint:** `http://127.0.0.1:23121/mcp` (port configurable in Zotero plugin settings)
-- **Protocol:** JSON-RPC 2.0 over HTTP POST
-- **Content-Type:** `application/json`
-
-### Session Initialization
-
-Before any tool call, send an `initialize` request once per session:
+首次会话先调用一次 `initialize`，然后再调用 `tools/call`。
 
 ```json
 {
@@ -22,211 +19,72 @@ Before any tool call, send an `initialize` request once per session:
   "params": {
     "protocolVersion": "2024-11-05",
     "capabilities": {},
-    "clientInfo": { "name": "cursor", "version": "1.0" }
+    "clientInfo": { "name": "codex", "version": "1.0" }
   }
 }
 ```
 
-### Tool Call Format
-
-```json
-{"jsonrpc":"2.0","id":<N>,"method":"tools/call","params":{"name":"<tool_name>","arguments":{...}}}
-```
-
-## Available Tools (10 total)
-
-### 1. `academic_search` — Search academic resources
-
-Search across multiple academic platforms. Returns structured metadata for `resource_add`.
-
-| Param        | Type   | Required | Description                                                                                                                           |
-| ------------ | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `query`      | string | YES      | Search query                                                                                                                          |
-| `platform`   | string | no       | `"all"` (default) or specific: `arxiv`, `crossref`, `pubmed`, `wos`, `zjusummon`, `cqvip`, `semantic`, `scopus`, `biorxiv`, `medrxiv` |
-| `maxResults` | number | no       | Max results (default: 25)                                                                                                             |
-| `page`       | number | no       | Page number (default: 1)                                                                                                              |
-| `year`       | string | no       | Year filter: `"2024"` or range `"2020-2024"`                                                                                          |
-| `author`     | string | no       | Author name filter                                                                                                                    |
-| `sortBy`     | string | no       | `"relevance"`, `"date"`, or `"citations"`                                                                                             |
-| `extra`      | object | no       | Provider-specific: `{"database":"WOK"}` for WoS, `{"days":60}` for bioRxiv                                                            |
+如果需要当前可用工具、源列表和 provider 用法，优先调用：
 
 ```json
 {
-  "name": "academic_search",
-  "arguments": {
-    "query": "topology optimization lattice",
-    "platform": "wos",
-    "maxResults": 5,
-    "sortBy": "citations"
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": { "name": "mcp_help", "arguments": { "topic": "overview" } }
+}
+```
+
+## 典型工具
+
+- `mcp_help`：返回 MCP 概览、工具说明、provider 用法示例。
+- `academic_search`：检索论文/学术资源。
+- `patent_search`：检索专利；PatentStar 支持 `patentType`、`legalStatus`、`database`、`rawQuery` 等增强参数。
+- `patent_detail`：按 provider 原生 ID 拉取专利详情。
+- `web_search` / `web_research`：网页与调研检索。
+- `resource_lookup` / `resource_add`：按 DOI/PMID/URL 查找并写入 Zotero。
+
+## PatentStar 示例
+
+按专利类型筛选：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "patent_search",
+    "arguments": {
+      "platform": "patentstar",
+      "query": "石墨烯传感器",
+      "patentType": "invention",
+      "maxResults": 5
+    }
   }
 }
 ```
 
-### 2. `patent_search` — Search patent resources
-
-Search across patent providers currently loaded into the plugin.
-
-| Param        | Type   | Required | Description                                                  |
-| ------------ | ------ | -------- | ------------------------------------------------------------ |
-| `query`      | string | YES      | Patent search query                                          |
-| `platform`   | string | no       | `"all"` (default) or a specific patent provider such as `patentstar` |
-| `maxResults` | number | no       | Max results (default: 25)                                    |
-| `page`       | number | no       | Page number (default: 1)                                     |
-| `sortBy`     | string | no       | `"relevance"` or `"date"`                                    |
-| `extra`      | object | no       | Provider-specific extra parameters                           |
-
-### 3. `patent_detail` — Fetch patent detail blocks
-
-Fetch normalized patent detail by provider-native source id.
-
-| Param      | Type     | Required | Description                                                      |
-| ---------- | -------- | -------- | ---------------------------------------------------------------- |
-| `platform` | string   | YES      | Patent provider id                                               |
-| `sourceId` | string   | YES      | Provider-native patent id                                        |
-| `include`  | string[] | no       | Any of `core`, `legalStatus`, `claims`, `description`, `pdf`, `images` |
-
-### 4. `web_search` — Unified web search
-
-Auto-routes to Tavily/Firecrawl/Exa/xAI based on query intent. Requires at least one web provider API key configured.
-
-| Param             | Type     | Required | Description                                                                                              |
-| ----------------- | -------- | -------- | -------------------------------------------------------------------------------------------------------- |
-| `query`           | string   | YES      | Search query                                                                                             |
-| `mode`            | string   | no       | `"auto"`, `"web"`, `"news"`, `"social"`, `"docs"`, `"research"`, `"github"`, `"pdf"`                     |
-| `intent`          | string   | no       | `"auto"`, `"factual"`, `"status"`, `"comparison"`, `"tutorial"`, `"exploratory"`, `"news"`, `"resource"` |
-| `strategy`        | string   | no       | `"auto"`, `"fast"`, `"balanced"`, `"verify"`, `"deep"`                                                   |
-| `provider`        | string   | no       | Force specific: `"auto"`, `"tavily"`, `"firecrawl"`, `"exa"`, `"xai"`                                    |
-| `sources`         | string[] | no       | `["web"]`, `["x"]`, or `["web","x"]`                                                                     |
-| `max_results`     | number   | no       | Max results (default: 5)                                                                                 |
-| `include_content` | boolean  | no       | Include full page text (default: false)                                                                  |
-| `include_answer`  | boolean  | no       | Include AI answer (default: true)                                                                        |
-| `include_domains` | string[] | no       | Only search these domains                                                                                |
-| `exclude_domains` | string[] | no       | Exclude these domains                                                                                    |
-| `from_date`       | string   | no       | Start date (YYYY-MM-DD)                                                                                  |
-| `to_date`         | string   | no       | End date (YYYY-MM-DD)                                                                                    |
+直接传专家检索式：
 
 ```json
 {
-  "name": "web_search",
-  "arguments": { "query": "latest React 19 features", "mode": "docs", "max_results": 5 }
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "patent_search",
+    "arguments": {
+      "platform": "patentstar",
+      "rawQuery": "F TI 石墨烯自支撑膜传感器",
+      "maxResults": 5
+    }
+  }
 }
 ```
 
-### 5. `web_research` — Multi-step research workflow
+## 使用提醒
 
-Web search + top-N page scraping + optional X/social search. Returns comprehensive evidence.
-
-| Param                | Type    | Required | Description                             |
-| -------------------- | ------- | -------- | --------------------------------------- |
-| `query`              | string  | YES      | Research question                       |
-| `web_max_results`    | number  | no       | Web results (default: 5)                |
-| `social_max_results` | number  | no       | Social results (default: 5)             |
-| `scrape_top_n`       | number  | no       | URLs to scrape (default: 3)             |
-| `include_social`     | boolean | no       | Include X/social search (default: true) |
-| `mode`               | string  | no       | Search mode (same as `web_search`)      |
-
-```json
-{
-  "name": "web_research",
-  "arguments": { "query": "impact of AI on drug discovery 2024", "scrape_top_n": 3 }
-}
-```
-
-### 6. `resource_lookup` — Look up by identifier or extract URL
-
-Returns full metadata for an identifier, or extracts content from a URL.
-
-| Param            | Type     | Required | Description                                                 |
-| ---------------- | -------- | -------- | ----------------------------------------------------------- |
-| `identifier`     | string   | no\*     | DOI, PMID, arXiv ID, or ISBN                                |
-| `identifierType` | string   | no       | `"doi"`, `"pmid"`, `"arxiv"`, `"isbn"` (auto-detected)      |
-| `url`            | string   | no\*     | URL to extract content from                                 |
-| `formats`        | string[] | no       | Output formats for URL extraction (default: `["markdown"]`) |
-| `provider`       | string   | no       | Extraction provider: `"auto"`, `"firecrawl"`, `"tavily"`    |
-
-\*At least one of `identifier` or `url` must be provided.
-
-```json
-{ "name": "resource_lookup", "arguments": { "identifier": "10.1038/s41586-021-03819-2" } }
-```
-
-```json
-{
-  "name": "resource_lookup",
-  "arguments": { "url": "https://example.com/article", "formats": ["markdown"] }
-}
-```
-
-### 7. `resource_add` — Add to Zotero library
-
-| Param            | Type     | Required | Description                            |
-| ---------------- | -------- | -------- | -------------------------------------- |
-| `item`           | object   | no\*     | ResourceItem from search/lookup        |
-| `url`            | string   | no\*     | URL to add                             |
-| `collectionKey`  | string   | no       | Zotero collection key                  |
-| `collectionPath` | string   | no       | Path like `"Research/ML/Transformers"` |
-| `tags`           | string[] | no       | Extra tags                             |
-| `fetchPDF`       | boolean  | no       | Auto-fetch PDF (default from settings) |
-
-\*At least one of `item` or `url`.
-
-Duplicate behavior:
-
-- Same item + same collection: rejected
-- Same item + different collection: added to new collection
-
-```json
-{"name":"resource_add","arguments":{"item":{...},"collectionPath":"毕设/参考文献","fetchPDF":true}}
-```
-
-### 8. `collection_list` — List Zotero collections
-
-| Param  | Type    | Required | Description                          |
-| ------ | ------- | -------- | ------------------------------------ |
-| `flat` | boolean | no       | Flat list with paths (default: tree) |
-
-### 9. `resource_pdf` — Fetch PDF for existing item
-
-| Param     | Type   | Required | Description     |
-| --------- | ------ | -------- | --------------- |
-| `itemKey` | string | YES      | Zotero item key |
-
-### 10. `platform_status` — Check all platforms
-
-No parameters. Returns status grouped by type (academic, patent, web), plus secret storage info.
-
-## Typical Workflows
-
-### Academic literature search
-
-1. `academic_search` with query
-2. Pick desired items
-3. `resource_add` with item + collection + `fetchPDF: true`
-
-### Web research and save
-
-1. `web_research` with research question
-2. Review results and pages
-3. `resource_add` to save relevant URLs to Zotero
-
-### Look up by DOI
-
-1. `resource_lookup` with DOI
-2. `resource_add` with returned item
-
-### Extract web page content
-
-1. `resource_lookup` with `url` parameter
-2. Returns markdown content from the page
-
-## Notes
-
-- Initialize MCP session before first tool call
-- Default port: 23121 (configurable in Zotero settings)
-- Web search requires API keys (Tavily/Firecrawl/Exa/xAI) configured in settings, or a MySearch Proxy
-- `fetchPDF` may take 10-30 seconds
-- Prefer passing DOI for best metadata quality
-
-## Acknowledgments
-
-- Web search routing logic adapted from [MySearch-Proxy](https://github.com/skernelx/MySearch-Proxy) by skernelx
+- 具体 provider 的可用性取决于当前 Zotero 插件里已经安装并启用的源。
+- 需要凭据的源，请先在 Zotero 设置页对应源卡片内完成配置并“测活”。
+- `mcp_help` 与 `/mcp/help` 会优先返回运行时实际已加载 provider 的说明，不要自己硬编码平台列表。

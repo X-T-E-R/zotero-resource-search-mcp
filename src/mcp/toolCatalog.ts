@@ -10,6 +10,34 @@ export interface ToolSchema {
 
 const TOOL_DEFINITIONS: ToolSchema[] = [
   {
+    name: "mcp_help",
+    description:
+      "Return user-facing MCP help, including endpoint info, tool summaries, and provider-specific usage examples.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: {
+          type: "string",
+          enum: ["overview", "tools", "providers", "patents", "skills"],
+          description: "Optional help topic filter",
+        },
+        tool: {
+          type: "string",
+          description: "Optional tool name to focus on",
+        },
+        provider: {
+          type: "string",
+          description: "Optional provider/backend id to focus on",
+        },
+        locale: {
+          type: "string",
+          enum: ["zh", "en"],
+          description: "Preferred response locale",
+        },
+      },
+    },
+  },
+  {
     name: "academic_search",
     description:
       "Search academic resources (papers, articles) across multiple platforms. Returns structured results that can be added to Zotero.",
@@ -23,7 +51,10 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
             'Platform to search. Use "all" for federated search across all available academic platforms.',
           enum: [],
         },
-        maxResults: { type: "number", description: "Maximum results per platform (default: 25)" },
+        maxResults: {
+          type: "number",
+          description: "Maximum results per platform. 0 = global default, -1 = source maximum.",
+        },
         page: { type: "number", description: "Page number (default: 1)" },
         year: {
           type: "string",
@@ -58,19 +89,56 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
             'Patent platform to search. Use "all" for federated search across all available patent platforms.',
           enum: [],
         },
-        maxResults: { type: "number", description: "Maximum results per platform (default: 25)" },
+        maxResults: {
+          type: "number",
+          description: "Maximum results per platform. 0 = global default, -1 = source maximum.",
+        },
         page: { type: "number", description: "Page number (default: 1)" },
         sortBy: {
           type: "string",
           enum: ["relevance", "date"],
           description: "Patent search sort criteria",
         },
+        patentType: {
+          type: "string",
+          enum: ["all", "invention", "utility_model", "design"],
+          description: "PatentStar patent type filter",
+        },
+        legalStatus: {
+          type: "string",
+          enum: ["all", "valid", "invalid", "pending"],
+          description: "PatentStar legal status filter",
+        },
+        database: {
+          type: "string",
+          enum: ["CN", "WD"],
+          description: "PatentStar database: China patents or world patents",
+        },
+        sortField: {
+          type: "string",
+          enum: ["applicationDate", "publicationDate"],
+          description: "PatentStar sort field override",
+        },
+        sortOrder: {
+          type: "string",
+          enum: ["asc", "desc"],
+          description: "PatentStar sort direction override",
+        },
+        queryMode: {
+          type: "string",
+          enum: ["simple", "expert"],
+          description: "Treat query as normal keywords or provider-native expert syntax",
+        },
+        rawQuery: {
+          type: "string",
+          description:
+            "Provider-native expert query string. For PatentStar this can be an F ... expert expression.",
+        },
         extra: {
           type: "object",
           description: "Patent-provider-specific extra parameters.",
         },
       },
-      required: ["query"],
     },
   },
   {
@@ -143,7 +211,10 @@ const TOOL_DEFINITIONS: ToolSchema[] = [
           items: { type: "string", enum: ["web", "x"] },
           description: 'Search sources, e.g. ["web"], ["x"], or ["web","x"]',
         },
-        max_results: { type: "number", description: "Maximum results (default: 5)" },
+        max_results: {
+          type: "number",
+          description: "Maximum results. 0 = global default, -1 = backend maximum.",
+        },
         include_content: {
           type: "boolean",
           description: "Include page full text (default: false)",

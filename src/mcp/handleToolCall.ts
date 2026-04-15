@@ -9,6 +9,7 @@ import { collectionHelper } from "../zotero/CollectionHelper";
 import { pdfFetcher } from "../zotero/PdfFetcher";
 import { webSearchRouter } from "../providers/web/WebSearchRouter";
 import { logger } from "../infra/Logger";
+import { createHelpSnapshot } from "./helpCatalog";
 
 export async function handleToolCall(name: string, args: any): Promise<any> {
   logger.info(`Tool call: ${name}`, JSON.stringify(args));
@@ -16,6 +17,8 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
   switch (name) {
     case "academic_search":
       return handleAcademicSearch(args);
+    case "mcp_help":
+      return handleMcpHelp(args);
     case "patent_search":
       return handlePatentSearch(args);
     case "patent_detail":
@@ -82,19 +85,59 @@ async function handleAcademicSearch(args: any): Promise<any> {
 }
 
 async function handlePatentSearch(args: any): Promise<any> {
-  const { query, platform, maxResults, page, sortBy, extra } = args;
+  const {
+    query,
+    platform,
+    maxResults,
+    page,
+    sortBy,
+    extra,
+    patentType,
+    legalStatus,
+    database,
+    sortField,
+    sortOrder,
+    rawQuery,
+    queryMode,
+  } = args;
 
-  if (!query || typeof query !== "string") {
-    return { error: "query is required and must be a string" };
+  const effectiveQuery =
+    typeof rawQuery === "string" && rawQuery.trim()
+      ? rawQuery.trim()
+      : typeof query === "string"
+        ? query
+        : "";
+
+  if (!effectiveQuery) {
+    return { error: "query or rawQuery is required and must be a string" };
   }
 
-  const options: any = { maxResults, page: page ?? 1, sortBy, extra };
-  const result = await searchAction.executeBySourceType(query, "patent", platform ?? "all", options);
+  const mergedExtra = {
+    ...(extra && typeof extra === "object" ? extra : {}),
+    patentType,
+    legalStatus,
+    database,
+    sortField,
+    sortOrder,
+    rawQuery:
+      typeof rawQuery === "string" && rawQuery.trim()
+        ? rawQuery
+        : queryMode === "expert"
+          ? effectiveQuery
+          : undefined,
+  };
+  const options: any = { maxResults, page: page ?? 1, sortBy, extra: mergedExtra };
+  const result = await searchAction.executeBySourceType(
+    effectiveQuery,
+    "patent",
+    platform ?? "all",
+    options,
+  );
 
   if (Array.isArray(result)) {
     const totalItems = result.reduce((sum, r) => sum + r.items.length, 0);
     return {
-      query,
+      query: effectiveQuery,
       platformsSearched: result.map((r) => r.platform),
       totalItems,
       results: result.map((r) => ({
@@ -109,7 +152,7 @@ async function handlePatentSearch(args: any): Promise<any> {
   }
 
   return {
-    query,
+    query: effectiveQuery,
     platform: result.platform,
     totalResults: result.totalResults,
     itemCount: result.items.length,
@@ -117,6 +160,15 @@ async function handlePatentSearch(args: any): Promise<any> {
     error: result.error,
     items: result.items,
   };
+}
+
+async function handleMcpHelp(args: any): Promise<any> {
+  return createHelpSnapshot({
+    topic: args?.topic,
+    tool: args?.tool,
+    provider: args?.provider,
+    locale: args?.locale,
+  });
 }
 
 async function handlePatentDetail(args: any): Promise<any> {
@@ -143,7 +195,9 @@ async function handleWebSearch(args: any): Promise<any> {
   }
 
   if (!webSearchRouter.hasAnyProvider()) {
-    return { error: "No web search provider is configured. Add API keys in plugin settings." };
+    return {
+      error: "No web search provider is configured. Configure a web backend in plugin settings.",
+    };
   }
 
   try {
@@ -174,7 +228,9 @@ async function handleWebResearch(args: any): Promise<any> {
   }
 
   if (!webSearchRouter.hasAnyProvider()) {
-    return { error: "No web search provider is configured. Add API keys in plugin settings." };
+    return {
+      error: "No web search provider is configured. Configure a web backend in plugin settings.",
+    };
   }
 
   try {
@@ -205,7 +261,8 @@ async function handleResourceLookup(args: any): Promise<any> {
   if (url && typeof url === "string") {
     if (!webSearchRouter.hasAnyProvider()) {
       return {
-        error: "No web extraction provider is configured. Add API keys in plugin settings.",
+        error:
+          "No web extraction provider is configured. Configure a web backend in plugin settings.",
       };
     }
     try {

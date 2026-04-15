@@ -17,9 +17,7 @@ function createDefaultSearchFields(
   sourceType: ProviderManifest["sourceType"] = "academic",
 ): Record<string, ProviderConfigFieldSchema> {
   const defaultSortEnum =
-    sourceType === "patent"
-      ? ["", "relevance", "date"]
-      : ["", "relevance", "date", "citations"];
+    sourceType === "patent" ? ["", "relevance", "date"] : ["", "relevance", "date", "citations"];
 
   return {
     enabled: {
@@ -38,10 +36,22 @@ function createDefaultSearchFields(
     maxResults: {
       type: "number",
       default: 0,
-      min: 0,
+      min: -1,
       max: 100,
       label: "Max Results",
       labelZh: "结果数",
+      description:
+        sourceType === "patent"
+          ? "0 = use global default, -1 = use this source maximum, positive numbers override both."
+          : "0 = use global default, -1 = use this source maximum, positive numbers override both.",
+    },
+    probeQuery: {
+      type: "string",
+      default: "",
+      label: "Probe Query",
+      labelZh: "测活查询",
+      description: "Optional override for this source's health check search query.",
+      advanced: true,
     },
   };
 }

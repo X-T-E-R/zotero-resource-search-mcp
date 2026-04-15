@@ -79,7 +79,7 @@ export class XAIClient implements WebBackend {
   async search(opts: {
     query: string;
     sources?: string[];
-    maxResults: number;
+    maxResults?: number;
     includeDomains?: string[];
     excludeDomains?: string[];
     allowedXHandles?: string[];
@@ -97,7 +97,7 @@ export class XAIClient implements WebBackend {
   private async searchOfficial(opts: {
     query: string;
     sources?: string[];
-    maxResults: number;
+    maxResults?: number;
     includeDomains?: string[];
     excludeDomains?: string[];
     allowedXHandles?: string[];
@@ -132,7 +132,7 @@ export class XAIClient implements WebBackend {
       input: [
         {
           role: "user",
-          content: `${opts.query}\n\nReturn up to ${opts.maxResults} relevant results with concise sourcing.`,
+          content: `${opts.query}\n\nReturn up to ${opts.maxResults ?? 5} relevant results with concise sourcing.`,
         },
       ],
       tools,
@@ -166,7 +166,7 @@ export class XAIClient implements WebBackend {
   private async searchCompatible(opts: {
     query: string;
     sources?: string[];
-    maxResults: number;
+    maxResults?: number;
     allowedXHandles?: string[];
     excludedXHandles?: string[];
     fromDate?: string;
@@ -185,7 +185,7 @@ export class XAIClient implements WebBackend {
     const payload: Record<string, any> = {
       query: opts.query,
       source: "x",
-      max_results: opts.maxResults,
+      max_results: opts.maxResults ?? 5,
     };
     if (opts.allowedXHandles?.length) payload.allowed_x_handles = opts.allowedXHandles;
     if (opts.excludedXHandles?.length) payload.excluded_x_handles = opts.excludedXHandles;
